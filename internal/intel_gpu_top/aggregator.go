@@ -2,6 +2,7 @@ package intel_gpu_top
 
 import (
 	"fmt"
+	igt "github.com/clambin/gpumon/pkg/intel-gpu-top"
 	"io"
 	"slices"
 	"sync"
@@ -10,16 +11,12 @@ import (
 // An Aggregator collects the GPUStats received from intel_gpu_top and produces a consolidated sample to be reported to Prometheus.
 // Consolidation is done by calculating the median of each attribute.
 type Aggregator struct {
-	stats []GPUStats
+	stats []igt.GPUStats
 	lock  sync.RWMutex
 }
 
-func (a *Aggregator) Process(r io.Reader) error {
-	return a.Read(&V118ArrayRemover{Reader: r})
-}
-
 func (a *Aggregator) Read(r io.Reader) error {
-	for stat, err := range ReadGPUStats(r) {
+	for stat, err := range igt.ReadGPUStats(r) {
 		if err != nil {
 			return fmt.Errorf("error while reading stats: %w", err)
 		}
@@ -28,7 +25,7 @@ func (a *Aggregator) Read(r io.Reader) error {
 	return nil
 }
 
-func (a *Aggregator) add(stats GPUStats) {
+func (a *Aggregator) add(stats igt.GPUStats) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	// TODO: if no one is collecting, this will grow until OOM.  should we clear a certain number of measurements?
@@ -45,24 +42,24 @@ func (a *Aggregator) Reset() {
 func (a *Aggregator) PowerStats() (float64, float64) {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
-	return medianFunc(a.stats, func(stats GPUStats) float64 { return stats.Power.GPU }),
-		medianFunc(a.stats, func(stats GPUStats) float64 { return stats.Power.Package })
+	return medianFunc(a.stats, func(stats igt.GPUStats) float64 { return stats.Power.GPU }),
+		medianFunc(a.stats, func(stats igt.GPUStats) float64 { return stats.Power.Package })
 }
 
-func (a *Aggregator) EngineStats() map[string]EngineStats {
+func (a *Aggregator) EngineStats() map[string]igt.EngineStats {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
 
 	statsByEngine := a.getEngineStatsByEngineName()
 
-	engineStats := make(map[string]EngineStats, len(statsByEngine))
+	engineStats := make(map[string]igt.EngineStats, len(statsByEngine))
 
 	for engine, stats := range statsByEngine {
 		if len(stats) > 0 {
-			engineStats[engine] = EngineStats{
-				Busy: medianFunc(stats, func(stats EngineStats) float64 { return stats.Busy }),
-				Sema: medianFunc(stats, func(stats EngineStats) float64 { return stats.Sema }),
-				Wait: medianFunc(stats, func(stats EngineStats) float64 { return stats.Wait }),
+			engineStats[engine] = igt.EngineStats{
+				Busy: medianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Busy }),
+				Sema: medianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Sema }),
+				Wait: medianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Wait }),
 				Unit: stats[0].Unit,
 			}
 		}
@@ -70,8 +67,8 @@ func (a *Aggregator) EngineStats() map[string]EngineStats {
 	return engineStats
 }
 
-func (a *Aggregator) getEngineStatsByEngineName() map[string][]EngineStats {
-	stats := make(map[string][]EngineStats)
+func (a *Aggregator) getEngineStatsByEngineName() map[string][]igt.EngineStats {
+	stats := make(map[string][]igt.EngineStats)
 	for _, stat := range a.stats {
 		for engine, stat := range stat.Engines {
 			stats[engine] = append(stats[engine], stat)
@@ -83,7 +80,7 @@ func (a *Aggregator) getEngineStatsByEngineName() map[string][]EngineStats {
 func (a *Aggregator) ClientStats() float64 {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
-	return medianFunc(a.stats, func(stats GPUStats) float64 { return float64(len(stats.Clients)) })
+	return medianFunc(a.stats, func(stats igt.GPUStats) float64 { return float64(len(stats.Clients)) })
 }
 
 func medianFunc[T any](entries []T, f func(T) float64) float64 {

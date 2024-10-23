@@ -1,7 +1,7 @@
 package collector
 
 import (
-	gpu "github.com/clambin/gpumon/internal/intel_gpu_top"
+	igt "github.com/clambin/gpumon/pkg/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"strings"
@@ -10,8 +10,8 @@ import (
 
 func TestCollector(t *testing.T) {
 	f := fakeTop{
-		stats: gpu.GPUStats{
-			Engines: map[string]gpu.EngineStats{
+		stats: igt.GPUStats{
+			Engines: map[string]igt.EngineStats{
 				"VCS": {Busy: 95, Sema: 1, Wait: 10},
 			},
 		},
@@ -39,10 +39,10 @@ gpumon_engine_usage{attrib="wait",engine="VCS"} 10
 var _ StatFetcher = &fakeTop{}
 
 type fakeTop struct {
-	stats gpu.GPUStats
+	stats igt.GPUStats
 }
 
-func (f fakeTop) EngineStats() map[string]gpu.EngineStats {
+func (f fakeTop) EngineStats() map[string]igt.EngineStats {
 	return f.stats.Engines
 }
 

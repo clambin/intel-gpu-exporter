@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/clambin/gpumon/internal/collector"
 	gpu "github.com/clambin/gpumon/internal/intel_gpu_top"
+	igt "github.com/clambin/gpumon/pkg/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io"
@@ -55,7 +56,7 @@ func Main(ctx context.Context, r prometheus.Registerer, l *slog.Logger) error {
 
 	var a gpu.Aggregator
 	go func() {
-		if err := a.Process(stdout); err != nil {
+		if err := a.Read(&igt.V118toV117{Reader: stdout}); err != nil {
 			l.Error("intel_gpu_top read failed", "err", err)
 			//os.Exit(1)
 		}
@@ -77,8 +78,6 @@ func Main(ctx context.Context, r prometheus.Registerer, l *slog.Logger) error {
 	<-ctx.Done()
 	return cmd.Wait()
 }
-
-//const gpuTopCommand = "ssh ubuntu@nuc1 sudo intel_gpu_top -J -s 5000"
 
 const gpuTopCommand = "intel_gpu_top -J -s 5000"
 

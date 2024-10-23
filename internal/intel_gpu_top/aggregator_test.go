@@ -1,6 +1,8 @@
 package intel_gpu_top
 
 import (
+	"context"
+	"github.com/clambin/gpumon/pkg/intel-gpu-top/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -8,14 +10,19 @@ import (
 )
 
 func TestAggregator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	const payloadCount = 4
+	r := testutil.FakeServer(ctx, []byte(testutil.SinglePayload), payloadCount, false, false, time.Millisecond)
 	var a Aggregator
-	assert.NoError(t, a.Process(statWriter(2, []byte(statEntry), time.Millisecond)))
+	assert.NoError(t, a.Read(r))
 
 	// a.Read works asynchronously. Wait for all data to be read.
-	assert.Eventually(t, func() bool { return len(a.EngineStats()) == 4 }, time.Second, time.Millisecond)
+	assert.Eventually(t, func() bool { return len(a.EngineStats()) == payloadCount }, time.Second, time.Millisecond)
 
 	engineStats := a.EngineStats()
-	require.Len(t, engineStats, 4)
+	require.Len(t, engineStats, payloadCount)
 	for i, engineName := range []string{"Render/3D", "Blitter", "Video", "VideoEnhance"} {
 		assert.Contains(t, engineStats, engineName)
 		assert.Equal(t, float64(i+1), engineStats[engineName].Busy)

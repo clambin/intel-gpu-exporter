@@ -1,7 +1,7 @@
 package collector
 
 import (
-	gpu "github.com/clambin/gpumon/internal/intel_gpu_top"
+	igt "github.com/clambin/gpumon/pkg/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -27,7 +27,7 @@ var (
 )
 
 type StatFetcher interface {
-	EngineStats() map[string]gpu.EngineStats
+	EngineStats() map[string]igt.EngineStats
 	PowerStats() (float64, float64)
 	ClientStats() float64
 	Reset()
