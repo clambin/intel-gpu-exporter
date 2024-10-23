@@ -23,7 +23,6 @@ var (
 	version = "change-me"
 	debug   = flag.Bool("debug", false, "Enable debug logging")
 	addr    = flag.String("addr", ":9090", "Prometheus metrics listener address")
-	fix     = flag.Bool("fix", false, "Attempt to fix invalid JSON produced by intel_gpu_top")
 )
 
 func main() {
@@ -54,13 +53,9 @@ func Main(ctx context.Context, r prometheus.Registerer, l *slog.Logger) error {
 
 	l.Debug("intel_gpu_top started", "cmd", cmd.String())
 
-	if *fix {
-		stdout = io.NopCloser(&gpu.JSONFixer{Reader: stdout})
-	}
-
 	var a gpu.Aggregator
 	go func() {
-		if err := a.Read(stdout); err != nil {
+		if err := a.Process(stdout); err != nil {
 			l.Error("intel_gpu_top read failed", "err", err)
 			//os.Exit(1)
 		}

@@ -2,52 +2,36 @@ package intel_gpu_top
 
 import (
 	"bytes"
+	"errors"
 	"io"
 )
 
-var _ io.Reader = &JSONFixer{}
-
-type JSONFixer struct {
-	Reader    io.Reader
-	buffer    bytes.Buffer
-	skipFirst bool
+// V118ArrayRemover converts the input from v1.18 of intel_gpu_top to v1.17 syntax.  Specifically,
+// v1.18 wraps the stats into a json array ("[" and "]").  V118ArrayRemover removes the leading and
+// trailing array markers, so we can pass a stream of stat objects to json.Decoder.
+type V118ArrayRemover struct {
+	Reader       io.Reader
+	arrayRemoved bool
 }
 
-func (j *JSONFixer) Read(p []byte) (int, error) {
-	// if the buffer is not empty, drain it first
-	if j.buffer.Len() > 0 {
-		return j.buffer.Read(p)
-	}
-
+func (r *V118ArrayRemover) Read(p []byte) (n int, err error) {
 	tmp := make([]byte, len(p))
-	n, err := j.Reader.Read(tmp)
-	if err != nil {
+	n, err = r.Reader.Read(tmp)
+	if err != nil && !errors.Is(err, io.EOF) {
 		return n, err
 	}
 	if n > 0 {
-		data := tmp[:n]
-
-		// we will be prepending the start of every new record with a comma, so:
-		// 	{ <stats> }
-		//	{ <stats> }
-		// becomes:
-		// 	{ <stats> },
-		//	{ <stats> }
-		// we therefore need to skip the start of the first record
-
-		if !j.skipFirst {
-			// Find the start of the next record
-			if index := bytes.Index(data, []byte("\n{")); index != -1 {
-				j.buffer.Write(data[:index+1])
-				data = data[index+1:]
-				j.skipFirst = true
+		tmp = tmp[:n]
+		if !r.arrayRemoved {
+			// TODO: better: is the first non-white space character a '['?
+			if index := bytes.Index(tmp, []byte("[")); index >= 0 {
+				tmp = tmp[index+1:]
+				n -= index + 1
+				r.arrayRemoved = true
 			}
 		}
-
-		// we're beyond the first record. prepend the start of the next record with a comma.
-		replaced := bytes.ReplaceAll(data, []byte("\n{"), []byte(",\n{"))
-		j.buffer.Write(replaced)
+		// TODO: if err == io.EOF, remove trailing ']'
 	}
-
-	return j.buffer.Read(p)
+	copy(p, tmp)
+	return n, err
 }

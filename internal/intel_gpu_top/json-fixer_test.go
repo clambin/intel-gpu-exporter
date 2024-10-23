@@ -1,66 +1,38 @@
 package intel_gpu_top
 
-/*
-func Test_jsonFixer(t *testing.T) {
+import (
+	"github.com/stretchr/testify/assert"
+	"strings"
+	"testing"
+)
+
+func TestV118ArrayRemover(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   string
-		want    string
-		wantErr assert.ErrorAssertionFunc
+		name  string
+		input string
+		want  int
 	}{
 		{
-			name:    "empty",
-			wantErr: assert.Error,
+			name:  "v1.17",
+			input: realPayload + realPayload + realPayload,
+			want:  3,
 		},
 		{
-			name: "single record",
-			input: `[
-{ "a": 1 }
-]
-`,
-			want: `[
-{ "a": 1 }
-]
-`,
-			wantErr: assert.NoError,
-		},
-		{
-			name: "multiple record",
-			input: `[
-{ "a": 1 }
-{ "a": 1 }
-{ "a": 1 }
-]
-`,
-			want: `[
-{ "a": 1 },
-{ "a": 1 },
-{ "a": 1 }
-]
-`,
-			wantErr: assert.NoError,
+			name:  "v1.18",
+			input: "[" + realPayload + realPayload + "]\n\n\n",
+			want:  2,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := JSONFixer{
-				Reader: strings.NewReader(tt.input),
+			r := &V118ArrayRemover{Reader: strings.NewReader(tt.input)}
+			var got int
+			for _, err := range ReadGPUStats(r) {
+				assert.NoError(t, err)
+				got++
 			}
-			var got []byte
-			for {
-				buf := make([]byte, 16)
-				n, err := j.Read(buf)
-				tt.wantErr(t, err)
-				got = append(got, buf[:n]...)
-				if n == 0 {
-					break
-				}
-			}
-			assert.Equal(t, tt.want, string(got))
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
-
-
-*/
