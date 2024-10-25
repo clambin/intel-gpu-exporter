@@ -1,4 +1,4 @@
-module github.com/clambin/gpumon
+module github.com/clambin/intel-gpu-exporter
 
 go 1.23
 

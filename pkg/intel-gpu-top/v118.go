@@ -19,19 +19,21 @@ type V118toV117 struct {
 	Reader io.Reader
 }
 
+// Read implements the io.Reader interface
 func (v *V118toV117) Read(p []byte) (n int, err error) {
 	tmp := make([]byte, len(p))
-	var buf bytes.Buffer
-	if n, err = v.Reader.Read(tmp); err == nil && n > 0 {
-		tmp = tmp[:n]
-		if tmp[0] == '[' || tmp[0] == ',' {
-			tmp[0] = ' '
-		}
-		if bytes.Equal(tmp, []byte("\n]\n")) {
-			buf.Write([]byte("\n"))
-		} else {
-			buf.Write(tmp)
-		}
+	n, err = v.Reader.Read(tmp)
+	if err != nil || n == 0 {
+		return n, err
 	}
-	return buf.Read(p)
+	if tmp[0] == '[' || tmp[0] == ',' {
+		tmp[0] = ' '
+	}
+	if index := bytes.LastIndex(tmp, []byte("\n]\n")); index >= 0 {
+		n = index + 1
+		tmp = tmp[:n]
+	}
+	copy(p, tmp[:n])
+
+	return n, err
 }

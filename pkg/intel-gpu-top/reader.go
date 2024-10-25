@@ -8,6 +8,7 @@ import (
 	"iter"
 )
 
+// GPUStats contains GPU utilization, as presented by intel-gpu-top
 type GPUStats struct {
 	Period struct {
 		Duration float64 `json:"duration"`
@@ -37,9 +38,10 @@ type GPUStats struct {
 		Unit   string  `json:"unit"`
 	} `json:"imc-bandwidth"`
 	Engines map[string]EngineStats `json:"engines"`
-	Clients map[string]Client      `json:"clients"`
+	Clients map[string]ClientStats `json:"clients"`
 }
 
+// EngineStats contains the utilization of one GPU engine.
 type EngineStats struct {
 	Busy float64 `json:"busy"`
 	Sema float64 `json:"sema"`
@@ -47,7 +49,8 @@ type EngineStats struct {
 	Unit string  `json:"unit"`
 }
 
-type Client struct {
+// ClientStats contains statistics for one client, currently using the GPU.
+type ClientStats struct {
 	Name          string `json:"name"`
 	Pid           string `json:"pid"`
 	EngineClasses map[string]struct {
@@ -56,6 +59,10 @@ type Client struct {
 	} `json:"engine-classes"`
 }
 
+// ReadGPUStats decodes the output of "intel-gpu-top -J" and iterates through the GPUStats records.
+//
+// Works with intel-gpu-top v1.17.  If you want to use v1.18 (which uses a different layout), see [V118toV117].
+// This middleware converts the output back to v1.17 layout, so it can be processed by ReadGPUStats
 func ReadGPUStats(r io.Reader) iter.Seq2[GPUStats, error] {
 	return func(yield func(GPUStats, error) bool) {
 		dec := json.NewDecoder(r)

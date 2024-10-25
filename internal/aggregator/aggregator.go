@@ -1,8 +1,8 @@
-package intel_gpu_top
+package aggregator
 
 import (
 	"fmt"
-	igt "github.com/clambin/gpumon/pkg/intel-gpu-top"
+	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
 	"io"
 	"slices"
 	"sync"

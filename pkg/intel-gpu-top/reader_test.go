@@ -1,10 +1,13 @@
 package intel_gpu_top
 
 import (
+	"bytes"
 	"context"
-	"github.com/clambin/gpumon/pkg/intel-gpu-top/testutil"
+	"errors"
+	"github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
 	"testing"
 	"time"
 )
@@ -35,5 +38,27 @@ func TestReadGPUStats(t *testing.T) {
 			}
 			assert.Equal(t, recordCount, got)
 		})
+	}
+}
+
+func BenchmarkV118toV117(b *testing.B) {
+	// generate input outside of the benchmark
+	var payload bytes.Buffer
+	r := testutil.FakeServer(context.Background(), []byte(testutil.SinglePayload), 10, true, true, 0*time.Millisecond)
+	var err error
+	for !errors.Is(err, io.EOF) {
+		buf := make([]byte, 512)
+		var n int
+		n, err = r.Read(buf)
+		payload.Write(buf[:n])
+	}
+	b.ResetTimer()
+	for range b.N {
+		r = &V118toV117{Reader: &payload}
+		var err error
+		for !errors.Is(err, io.EOF) {
+			buf := make([]byte, 512)
+			_, err = r.Read(buf)
+		}
 	}
 }

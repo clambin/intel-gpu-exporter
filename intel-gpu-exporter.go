@@ -5,9 +5,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/clambin/gpumon/internal/collector"
-	gpu "github.com/clambin/gpumon/internal/intel_gpu_top"
-	igt "github.com/clambin/gpumon/pkg/intel-gpu-top"
+	"github.com/clambin/intel-gpu-exporter/internal/aggregator"
+	"github.com/clambin/intel-gpu-exporter/internal/collector"
+	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io"
@@ -54,7 +54,7 @@ func Main(ctx context.Context, r prometheus.Registerer, l *slog.Logger) error {
 
 	l.Debug("intel_gpu_top started", "cmd", cmd.String())
 
-	var a gpu.Aggregator
+	var a aggregator.Aggregator
 	go func() {
 		if err := a.Read(&igt.V118toV117{Reader: stdout}); err != nil {
 			l.Error("intel_gpu_top read failed", "err", err)

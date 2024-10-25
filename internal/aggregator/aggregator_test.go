@@ -1,8 +1,8 @@
-package intel_gpu_top
+package aggregator
 
 import (
 	"context"
-	"github.com/clambin/gpumon/pkg/intel-gpu-top/testutil"
+	"github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
