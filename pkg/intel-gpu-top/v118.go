@@ -21,19 +21,18 @@ type V118toV117 struct {
 
 // Read implements the io.Reader interface
 func (v *V118toV117) Read(p []byte) (n int, err error) {
-	tmp := make([]byte, len(p))
-	n, err = v.Reader.Read(tmp)
+	n, err = v.Reader.Read(p)
 	if err != nil || n == 0 {
 		return n, err
 	}
-	if tmp[0] == '[' || tmp[0] == ',' {
-		tmp[0] = ' '
+	// note: for ',', this assumes we'll never receive two records in a single read. in practice, this is the case,
+	// but may break at some point!
+	if p[0] == '[' || p[0] == ',' {
+		p[0] = ' '
 	}
-	if index := bytes.LastIndex(tmp, []byte("\n]\n")); index >= 0 {
-		n = index + 1
-		tmp = tmp[:n]
+	if len(p) > 2 && bytes.Equal(p[len(p)-3:], []byte("\n]\n")) {
+		n -= 3
+		p = p[:n]
 	}
-	copy(p, tmp[:n])
-
 	return n, err
 }
