@@ -62,12 +62,11 @@ func ReadGPUStats(r io.Reader) iter.Seq2[GPUStats, error] {
 		var err error
 		for dec.More() {
 			var stats GPUStats
-			if err = dec.Decode(&stats); err == nil {
-				if !yield(stats, nil) {
-					return
-				}
-			} else {
+			if err = dec.Decode(&stats); err != nil {
 				break
+			}
+			if !yield(stats, nil) {
+				return
 			}
 		}
 		if err != nil && !errors.Is(err, io.EOF) {
