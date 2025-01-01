@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func Test_Main(t *testing.T) {
+func Test_run(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
