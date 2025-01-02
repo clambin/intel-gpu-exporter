@@ -1,4 +1,4 @@
-package tmp
+package collector
 
 import (
 	"context"

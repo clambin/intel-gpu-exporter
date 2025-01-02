@@ -1,4 +1,4 @@
-package tmp
+package collector
 
 import (
 	"context"
@@ -70,7 +70,8 @@ func (r *TopReader) Run(ctx context.Context) error {
 			// start aggregating from the new instance's output.
 			// any previous goroutines will stop as soon as the previous stdout is closed.
 			go func() {
-				if err := r.Aggregator.Read(igt.V118toV117{Reader: stdout}); err != nil {
+				stdout = igt.V118toV117{Reader: stdout}
+				if err := r.Aggregator.Read(stdout); err != nil {
 					r.logger.Error("failed to start reader", "err", err)
 				}
 			}()
@@ -110,8 +111,9 @@ func (t *TopRunner) Start(ctx context.Context, interval time.Duration) (io.Reade
 }
 
 func buildCommand(scanInterval time.Duration) []string {
-	// const gpuTopCommand = "intel_gpu_top -J -s"
-	const gpuTopCommand = "ssh ubuntu@nuc1 sudo intel_gpu_top -J -s"
+	//const gpuTopCommand = "ssh ubuntu@nuc1 sudo intel_gpu_top -J -s"
+	//const gpuTopCommand = "kubectl -n infra exec intel-gpu-exporter-6dllv -- intel_gpu_top -J -s"
+	const gpuTopCommand = "intel_gpu_top -J -s"
 
 	return append(
 		strings.Split(gpuTopCommand, " "),
