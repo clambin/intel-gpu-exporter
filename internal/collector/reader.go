@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -30,6 +31,7 @@ type TopReader struct {
 type topRunner interface {
 	Start(ctx context.Context, interval time.Duration) (io.Reader, error)
 	Stop()
+	Running() bool
 }
 
 // NewTopReader returns a new TopReader that will measure GPU usage at `interval` seconds.
@@ -70,9 +72,9 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 	if ok && time.Since(last) < r.timeout {
 		return nil
 	}
-	if r.topRunner != nil {
+	if r.topRunner.Running() {
 		// Shut down the current instance of igt.
-		r.logger.Debug("timed out waiting for data. restarting intel-gpu-top", "waitTime", last)
+		r.logger.Warn("timed out waiting for data. restarting intel-gpu-top", "waitTime", last)
 		r.topRunner.Stop()
 	}
 
@@ -97,23 +99,24 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 // TopRunner starts / stops an instance of intel-gpu-top
 type TopRunner struct {
 	logger     *slog.Logger
-	cmd        *exec.Cmd
+	cmd        atomic.Pointer[exec.Cmd]
 	startCount int
 }
 
 func (t *TopRunner) Start(ctx context.Context, interval time.Duration) (io.Reader, error) {
 	cmdline := buildCommand(interval)
 	t.logger.Debug("top command built", "interval", interval, "cmd", strings.Join(cmdline, " "))
-	t.cmd = exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
-	stdout, err := t.cmd.StdoutPipe()
+	cmd := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("could not get stdout pipe: %w", err)
 	}
 	t.startCount++
-	if err = t.cmd.Start(); err != nil {
+	if err = cmd.Start(); err != nil {
 		return nil, fmt.Errorf("could not start command: %w", err)
 	}
-	t.logger.Debug("started top command", "count", t.startCount, "pid", t.cmd.Process.Pid)
+	t.logger.Debug("started top command", "count", t.startCount, "pid", cmd.Process.Pid)
+	t.cmd.Store(cmd)
 	return stdout, nil
 }
 
@@ -128,10 +131,14 @@ func buildCommand(scanInterval time.Duration) []string {
 }
 
 func (t *TopRunner) Stop() {
-	if t.cmd != nil {
-		t.logger.Debug("stopping top command", "count", t.startCount, "pid", t.cmd.Process.Pid)
-		_ = t.cmd.Process.Kill()
-		_ = t.cmd.Wait()
-		t.cmd = nil
+	if cmd := t.cmd.Load(); cmd != nil {
+		t.logger.Debug("stopping top command", "count", t.startCount, "pid", cmd.Process.Pid)
+		t.cmd.Store(nil)
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
 	}
+}
+
+func (t *TopRunner) Running() bool {
+	return t.cmd.Load() != nil
 }

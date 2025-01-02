@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io"
 	"log/slog"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -32,7 +33,7 @@ func TestTopReader_Run(t *testing.T) {
 	got := r.Aggregator.len()
 
 	// stop the current writer
-	fake.cancel()
+	fake.Stop()
 
 	// wait for reader to time out and start a new writer.
 	assert.Eventually(t, func() bool {
@@ -47,12 +48,12 @@ func TestTopReader_Run(t *testing.T) {
 var _ topRunner = &fakeRunner{}
 
 type fakeRunner struct {
-	cancel context.CancelFunc
+	cancel atomic.Value
 }
 
 func (f *fakeRunner) Start(ctx context.Context, interval time.Duration) (io.Reader, error) {
-	var subCtx context.Context
-	subCtx, f.cancel = context.WithCancel(ctx)
+	subCtx, cancel := context.WithCancel(ctx)
+	f.cancel.Store(cancel)
 	r, w := io.Pipe()
 	go func() {
 		defer func() { _ = r.Close() }()
@@ -71,7 +72,11 @@ func (f *fakeRunner) Start(ctx context.Context, interval time.Duration) (io.Read
 }
 
 func (f *fakeRunner) Stop() {
-	if f.cancel != nil {
-		f.cancel()
+	if cancel := f.cancel.Load().(context.CancelFunc); cancel != nil {
+		cancel()
 	}
+}
+
+func (f *fakeRunner) Running() bool {
+	return f.cancel.Load() != nil
 }
