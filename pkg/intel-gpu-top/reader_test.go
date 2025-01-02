@@ -52,7 +52,7 @@ func TestReadGPUStats(t *testing.T) {
 }
 
 // Current:
-// BenchmarkV118toV117-16           2265168               525.1 ns/op            64 B/op          2 allocs/op
+// BenchmarkV118toV117-16           3372247               354.8 ns/op            64 B/op          2 allocs/op
 func BenchmarkV118toV117(b *testing.B) {
 	// generate input outside the benchmark
 	var payload bytes.Buffer
@@ -61,7 +61,8 @@ func BenchmarkV118toV117(b *testing.B) {
 		b.Fatal(err)
 	}
 	b.ResetTimer()
-	buf := make([]byte, 512)
+	b.ReportAllocs()
+	buf := make([]byte, 2048)
 	for range b.N {
 		r = V118toV117{Reader: bytes.NewReader(payload.Bytes())}
 

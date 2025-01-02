@@ -87,10 +87,11 @@ var _ io.Reader = &V118toV117{}
 
 // V118toV117 converts the input from v1.18 of intel_gpu_top to v1.17 syntax. Specifically:
 //
-//   - V1.18 generates the stats as a json array, which makes it difficult to stream the data to the reader. V118toV117 removes the array indicators ("[" and "]")
-//   - V1.18 *sometimes* (?) writes commas between the stats, meaning the content can't be parsed as individual records.
+//   - V1.18 generates the stats as a json array ("[" and "]").
+//   - V1.18 *sometimes* (?) writes commas between the stats.
 //
-// V118toV117 removes these, turning the data back to V1.17 layout.
+// This means json.Decoder will try to read in the full array, where we want to stream the individual records.
+// V118toV117 solves this by removed the array & comma tokens, turning the data back to V1.17 layout.
 //
 // Note: this is *very* dependent on the actual layout of intel_gpu_top's output and will probably break at some point.
 type V118toV117 struct {

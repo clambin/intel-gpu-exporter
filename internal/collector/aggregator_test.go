@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
-	testutil2 "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top/testutil"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,12 +67,12 @@ func TestAggregator_Reset(t *testing.T) {
 
 func TestAggregator_Collect(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
-	a := Aggregator{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	go func() {
-		require.NoError(t, a.Read(testutil2.FakeServer(ctx, []byte(testutil2.SinglePayload), 1, false, false, 0)))
-	}()
+	fake := fakeRunner{}
+	r, _ := fake.Start(ctx, time.Millisecond)
+	var a Aggregator
+	a.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	errCh := make(chan error)
+	go func() { errCh <- a.Read(r) }()
 
 	// wait for the aggregator to read in the data
 	assert.Eventually(t, func() bool { return a.len() > 0 }, time.Second, time.Millisecond)
@@ -103,6 +102,9 @@ gpumon_engine_usage{attrib="wait",engine="VideoEnhance"} 0
 gpumon_power{type="gpu"} 1
 gpumon_power{type="pkg"} 4
 `)))
+
+	cancel()
+	assert.NoError(t, <-errCh)
 }
 
 func TestEngineStats_LogValue(t *testing.T) {
