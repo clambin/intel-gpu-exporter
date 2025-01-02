@@ -110,7 +110,7 @@ func (a *Aggregator) EngineStats() EngineStats {
 		for engineName, engineStat := range stat.Engines {
 			// pre-allocate so slices don't need to grow as we add stats
 			if statsByEngine[engineName] == nil {
-				statsByEngine[engineName] = make([]igt.EngineStats, 0, len(a.stats)/engineCount)
+				statsByEngine[engineName] = make([]igt.EngineStats, 0, len(a.stats))
 			}
 			statsByEngine[engineName] = append(statsByEngine[engineName], engineStat)
 		}

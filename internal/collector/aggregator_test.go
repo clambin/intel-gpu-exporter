@@ -156,7 +156,7 @@ func Benchmark_medianFunc(b *testing.B) {
 }
 
 // Current:
-// BenchmarkAggregator_EngineStats-16          4868            234483 ns/op          385557 B/op         26 allocs/op
+// BenchmarkAggregator_EngineStats-16          5324            218936 ns/op          262684 B/op         19 allocs/op
 func BenchmarkAggregator_EngineStats(b *testing.B) {
 	const count = 1001
 	var engineNames = []string{"Render/3D", "Blitter", "Video", "VideoEnhance"}
