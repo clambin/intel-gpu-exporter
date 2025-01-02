@@ -72,7 +72,7 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 	}
 	if r.topRunner.Running() {
 		// Shut down the current instance of igt.
-		r.logger.Warn("timed out waiting for data. restarting intel-gpu-top", "waitTime", last)
+		r.logger.Warn("timed out waiting for data. restarting intel-gpu-top", "waitTime", time.Since(last))
 		r.topRunner.Stop()
 	}
 
