@@ -51,11 +51,8 @@ func (r *TopReader) Run(ctx context.Context) error {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	var stdout io.Reader
-	var err error
-
 	for {
-		if err = r.ensureReaderRunning(ctx, stdout); err != nil {
+		if err := r.ensureReaderIsRunning(ctx); err != nil {
 			return err
 		}
 		select {
@@ -67,19 +64,21 @@ func (r *TopReader) Run(ctx context.Context) error {
 	}
 }
 
-func (r *TopReader) ensureReaderRunning(ctx context.Context, stdout io.Reader) (err error) {
-	// if we have not received data for `timeout` seconds, stop the current igt process
-	if last, ok := r.Aggregator.LastUpdate(); ok && time.Since(last) > r.timeout {
-		r.logger.Debug("timed out waiting for data. restarting intel-gpu-top", "waitTime", last)
-		r.topRunner.Stop()
-		stdout = nil
-	}
-
-	// start igt if it's not running (i.e. we're starting, or we timed out waiting for data).
-	if stdout != nil {
+func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
+	// if we have received data  `timeout` seconds, do nothing
+	last, ok := r.Aggregator.LastUpdate()
+	if ok && time.Since(last) < r.timeout {
 		return nil
 	}
-	if stdout, err = r.topRunner.Start(ctx, r.interval); err != nil {
+	if r.topRunner != nil {
+		// Shut down the current instance of igt.
+		r.logger.Debug("timed out waiting for data. restarting intel-gpu-top", "waitTime", last)
+		r.topRunner.Stop()
+	}
+
+	// start a new instance of igt
+	stdout, err := r.topRunner.Start(ctx, r.interval)
+	if err != nil {
 		return fmt.Errorf("intel-gpu-top: %w", err)
 	}
 	// start aggregating from the new instance's output.

@@ -71,5 +71,7 @@ func (f *fakeRunner) Start(ctx context.Context, interval time.Duration) (io.Read
 }
 
 func (f *fakeRunner) Stop() {
-	f.cancel()
+	if f.cancel != nil {
+		f.cancel()
+	}
 }
