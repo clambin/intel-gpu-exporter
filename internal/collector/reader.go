@@ -98,7 +98,7 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 type TopRunner struct {
 	logger     *slog.Logger
 	cmd        atomic.Pointer[exec.Cmd]
-	startCount int
+	runCounter atomic.Int32
 }
 
 func (t *TopRunner) Start(ctx context.Context, interval time.Duration) (io.Reader, error) {
@@ -109,11 +109,11 @@ func (t *TopRunner) Start(ctx context.Context, interval time.Duration) (io.Reade
 	if err != nil {
 		return nil, fmt.Errorf("could not get stdout pipe: %w", err)
 	}
-	t.startCount++
+	t.runCounter.Add(1)
 	if err = cmd.Start(); err != nil {
 		return nil, fmt.Errorf("could not start command: %w", err)
 	}
-	t.logger.Debug("started top command", "count", t.startCount, "pid", cmd.Process.Pid)
+	t.logger.Debug("started top command", "count", t.runCounter.Load(), "pid", cmd.Process.Pid)
 	t.cmd.Store(cmd)
 	return stdout, nil
 }
@@ -130,7 +130,7 @@ func buildCommand(scanInterval time.Duration) []string {
 
 func (t *TopRunner) Stop() {
 	if cmd := t.cmd.Load(); cmd != nil {
-		t.logger.Debug("stopping top command", "count", t.startCount, "pid", cmd.Process.Pid)
+		t.logger.Debug("stopping top command", "count", t.runCounter.Load(), "pid", cmd.Process.Pid)
 		t.cmd.Store(nil)
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()

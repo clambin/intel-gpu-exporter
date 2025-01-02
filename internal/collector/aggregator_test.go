@@ -156,8 +156,6 @@ func Benchmark_medianFunc(b *testing.B) {
 }
 
 // Current:
-// BenchmarkAggregator_EngineStats-16          4962            234863 ns/op          457877 B/op         58 allocs/op
-// After:
 // BenchmarkAggregator_EngineStats-16          4868            234483 ns/op          385557 B/op         26 allocs/op
 func BenchmarkAggregator_EngineStats(b *testing.B) {
 	const count = 1001
