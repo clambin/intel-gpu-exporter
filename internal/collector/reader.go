@@ -21,10 +21,8 @@ type TopReader struct {
 	topRunner
 	logger *slog.Logger
 	Aggregator
-	interval    time.Duration
-	timeout     time.Duration
-	writerCount int
-	readerCount int
+	interval time.Duration
+	timeout  time.Duration
 }
 
 // topRunner interface allows us to override TopRunner during testing.

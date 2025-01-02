@@ -11,53 +11,53 @@ import (
 
 // GPUStats contains GPU utilization, as presented by intel-gpu-top
 type GPUStats struct {
-	Period struct {
-		Duration float64 `json:"duration"`
-		Unit     string  `json:"unit"`
-	} `json:"period"`
-	Frequency struct {
-		Requested float64 `json:"requested"`
-		Actual    float64 `json:"actual"`
-		Unit      string  `json:"unit"`
-	} `json:"frequency"`
-	Interrupts struct {
-		Count float64 `json:"count"`
-		Unit  string  `json:"unit"`
-	} `json:"interrupts"`
-	Rc6 struct {
-		Value float64 `json:"value"`
-		Unit  string  `json:"unit"`
-	} `json:"rc6"`
-	Power struct {
-		GPU     float64 `json:"GPU"`
-		Package float64 `json:"Package"`
-		Unit    string  `json:"unit"`
-	} `json:"power"`
-	ImcBandwidth struct {
-		Reads  float64 `json:"reads"`
-		Writes float64 `json:"writes"`
-		Unit   string  `json:"unit"`
-	} `json:"imc-bandwidth"`
 	Engines map[string]EngineStats `json:"engines"`
 	Clients map[string]ClientStats `json:"clients"`
+	Period  struct {
+		Unit     string  `json:"unit"`
+		Duration float64 `json:"duration"`
+	} `json:"period"`
+	Interrupts struct {
+		Unit  string  `json:"unit"`
+		Count float64 `json:"count"`
+	} `json:"interrupts"`
+	Rc6 struct {
+		Unit  string  `json:"unit"`
+		Value float64 `json:"value"`
+	} `json:"rc6"`
+	Frequency struct {
+		Unit      string  `json:"unit"`
+		Requested float64 `json:"requested"`
+		Actual    float64 `json:"actual"`
+	} `json:"frequency"`
+	Power struct {
+		Unit    string  `json:"unit"`
+		GPU     float64 `json:"GPU"`
+		Package float64 `json:"Package"`
+	} `json:"power"`
+	ImcBandwidth struct {
+		Unit   string  `json:"unit"`
+		Reads  float64 `json:"reads"`
+		Writes float64 `json:"writes"`
+	} `json:"imc-bandwidth"`
 }
 
 // EngineStats contains the utilization of one GPU engine.
 type EngineStats struct {
+	Unit string  `json:"unit"`
 	Busy float64 `json:"busy"`
 	Sema float64 `json:"sema"`
 	Wait float64 `json:"wait"`
-	Unit string  `json:"unit"`
 }
 
 // ClientStats contains statistics for one client, currently using the GPU.
 type ClientStats struct {
-	Name          string `json:"name"`
-	Pid           string `json:"pid"`
 	EngineClasses map[string]struct {
 		Busy string `json:"busy"`
 		Unit string `json:"unit"`
 	} `json:"engine-classes"`
+	Name string `json:"name"`
+	Pid  string `json:"pid"`
 }
 
 // ReadGPUStats decodes the output of "intel-gpu-top -J" and iterates through the GPUStats records.
