@@ -19,7 +19,7 @@ func Test_run(t *testing.T) {
 
 	r := prometheus.NewRegistry()
 	reader := NewTopReader(l, 100*time.Millisecond)
-	reader.topRunner = &fakeRunner{}
+	reader.topRunner = &fakeRunner{interval: 100 * time.Millisecond}
 
 	errCh := make(chan error)
 	go func() {

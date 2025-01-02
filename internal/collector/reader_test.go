@@ -11,11 +11,15 @@ import (
 	"time"
 )
 
+func Test_buildCommand(t *testing.T) {
+	assert.Equal(t, []string{"intel_gpu_top", "-J", "-s", "1000"}, buildCommand(time.Second))
+}
+
 func TestTopReader_Run(t *testing.T) {
 	//l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
 	r := NewTopReader(l, 100*time.Millisecond)
-	fake := fakeRunner{}
+	fake := fakeRunner{interval: 100 * time.Millisecond}
 	r.topRunner = &fake
 	r.timeout = time.Second
 
@@ -48,10 +52,11 @@ func TestTopReader_Run(t *testing.T) {
 var _ topRunner = &fakeRunner{}
 
 type fakeRunner struct {
-	cancel atomic.Value
+	interval time.Duration
+	cancel   atomic.Value
 }
 
-func (f *fakeRunner) Start(ctx context.Context, interval time.Duration) (io.Reader, error) {
+func (f *fakeRunner) Start(ctx context.Context, _ []string) (io.Reader, error) {
 	subCtx, cancel := context.WithCancel(ctx)
 	f.cancel.Store(cancel)
 	r, w := io.Pipe()
@@ -61,7 +66,7 @@ func (f *fakeRunner) Start(ctx context.Context, interval time.Duration) (io.Read
 			select {
 			case <-subCtx.Done():
 				return
-			case <-time.After(interval):
+			case <-time.After(f.interval):
 				if _, err := w.Write([]byte(testutil.SinglePayload)); err != nil {
 					panic(err)
 				}

@@ -19,8 +19,8 @@ func TestAggregator(t *testing.T) {
 	t.Cleanup(cancel)
 
 	const payloadCount = 4
-	fake := fakeRunner{}
-	r, _ := fake.Start(ctx, time.Millisecond)
+	fake := fakeRunner{interval: time.Millisecond}
+	r, _ := fake.Start(ctx, nil)
 	var a Aggregator
 	a.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	errCh := make(chan error)
@@ -67,8 +67,8 @@ func TestAggregator_Reset(t *testing.T) {
 
 func TestAggregator_Collect(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	fake := fakeRunner{}
-	r, _ := fake.Start(ctx, time.Millisecond)
+	fake := fakeRunner{interval: time.Millisecond}
+	r, _ := fake.Start(ctx, nil)
 	var a Aggregator
 	a.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	errCh := make(chan error)

@@ -6,10 +6,8 @@ import (
 	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
 	"io"
 	"log/slog"
-	"os/exec"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 )
 
@@ -25,9 +23,9 @@ type TopReader struct {
 	timeout  time.Duration
 }
 
-// topRunner interface allows us to override TopRunner during testing.
+// topRunner interface allows us to override Runner during testing.
 type topRunner interface {
-	Start(ctx context.Context, interval time.Duration) (io.Reader, error)
+	Start(ctx context.Context, cmdline []string) (io.Reader, error)
 	Stop()
 	Running() bool
 }
@@ -37,7 +35,7 @@ func NewTopReader(logger *slog.Logger, interval time.Duration) *TopReader {
 	r := TopReader{
 		logger:     logger,
 		Aggregator: Aggregator{logger: logger.With("subsystem", "aggregator")},
-		topRunner:  &TopRunner{logger: logger.With("subsystem", "runner")},
+		topRunner:  &Runner{logger: logger.With("subsystem", "runner")},
 		interval:   interval,
 		timeout:    15 * time.Second,
 	}
@@ -77,7 +75,10 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 	}
 
 	// start a new instance of igt
-	stdout, err := r.topRunner.Start(ctx, r.interval)
+	cmdline := buildCommand(r.interval)
+	r.logger.Debug("top command built", "interval", r.interval, "cmd", strings.Join(cmdline, " "))
+
+	stdout, err := r.topRunner.Start(ctx, cmdline)
 	if err != nil {
 		return fmt.Errorf("intel-gpu-top: %w", err)
 	}
@@ -94,30 +95,6 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 	return nil
 }
 
-// TopRunner starts / stops an instance of intel-gpu-top
-type TopRunner struct {
-	logger     *slog.Logger
-	cmd        atomic.Pointer[exec.Cmd]
-	runCounter atomic.Int32
-}
-
-func (t *TopRunner) Start(ctx context.Context, interval time.Duration) (io.Reader, error) {
-	cmdline := buildCommand(interval)
-	t.logger.Debug("top command built", "interval", interval, "cmd", strings.Join(cmdline, " "))
-	cmd := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("could not get stdout pipe: %w", err)
-	}
-	t.runCounter.Add(1)
-	if err = cmd.Start(); err != nil {
-		return nil, fmt.Errorf("could not start command: %w", err)
-	}
-	t.logger.Debug("started top command", "count", t.runCounter.Load(), "pid", cmd.Process.Pid)
-	t.cmd.Store(cmd)
-	return stdout, nil
-}
-
 func buildCommand(scanInterval time.Duration) []string {
 	//const gpuTopCommand = "ssh ubuntu@nuc1 sudo intel_gpu_top -J -s"
 	const gpuTopCommand = "intel_gpu_top -J -s"
@@ -126,17 +103,4 @@ func buildCommand(scanInterval time.Duration) []string {
 		strings.Split(gpuTopCommand, " "),
 		strconv.Itoa(int(scanInterval.Milliseconds())),
 	)
-}
-
-func (t *TopRunner) Stop() {
-	if cmd := t.cmd.Load(); cmd != nil {
-		t.logger.Debug("stopping top command", "count", t.runCounter.Load(), "pid", cmd.Process.Pid)
-		t.cmd.Store(nil)
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-	}
-}
-
-func (t *TopRunner) Running() bool {
-	return t.cmd.Load() != nil
 }
