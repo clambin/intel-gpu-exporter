@@ -54,7 +54,7 @@ func (a *Aggregator) Read(r io.Reader) error {
 		}
 		a.add(stat)
 		a.lastUpdate.Store(time.Now())
-		a.logger.Debug("found stats", "stat", stat)
+		//a.logger.Debug("found stats", "stat", stat)
 	}
 	return nil
 }
@@ -126,7 +126,7 @@ func (a *Aggregator) EngineStats() EngineStats {
 			Unit: stats[0].Unit,
 		}
 	}
-	//a.logger.Debug("engine stats collected", "samples", len(a.stats), "engines", engineStats)
+	a.logger.Debug("engine stats collected", "samples", len(a.stats), "engines", engineStats)
 	return engineStats
 }
 
