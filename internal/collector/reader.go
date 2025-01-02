@@ -55,29 +55,9 @@ func (r *TopReader) Run(ctx context.Context) error {
 	var err error
 
 	for {
-		// if we have not received data for `timeout` seconds, stop the current igt process
-		if last, ok := r.Aggregator.LastUpdate(); ok && time.Since(last) > r.timeout {
-			r.logger.Debug("timed out waiting for data. restarting intel-gpu-top", "waitTime", last)
-			r.topRunner.Stop()
-			stdout = nil
+		if err = r.ensureReaderRunning(ctx, stdout); err != nil {
+			return err
 		}
-
-		// start igt if it's not running (i.e. we're starting, or we timed out waiting for data).
-		if stdout == nil {
-			if stdout, err = r.topRunner.Start(ctx, r.interval); err != nil {
-				return fmt.Errorf("intel-gpu-top: %w", err)
-			}
-			// start aggregating from the new instance's output.
-			// any previous goroutines will stop as soon as the previous stdout is closed.
-			go func() {
-				stdout = igt.V118toV117{Reader: stdout}
-				if err := r.Aggregator.Read(stdout); err != nil {
-					r.logger.Error("failed to start reader", "err", err)
-				}
-			}()
-			r.Aggregator.lastUpdate.Store(time.Now())
-		}
-
 		select {
 		case <-ctx.Done():
 			r.topRunner.Stop()
@@ -85,6 +65,34 @@ func (r *TopReader) Run(ctx context.Context) error {
 		case <-ticker.C:
 		}
 	}
+}
+
+func (r *TopReader) ensureReaderRunning(ctx context.Context, stdout io.Reader) (err error) {
+	// if we have not received data for `timeout` seconds, stop the current igt process
+	if last, ok := r.Aggregator.LastUpdate(); ok && time.Since(last) > r.timeout {
+		r.logger.Debug("timed out waiting for data. restarting intel-gpu-top", "waitTime", last)
+		r.topRunner.Stop()
+		stdout = nil
+	}
+
+	// start igt if it's not running (i.e. we're starting, or we timed out waiting for data).
+	if stdout != nil {
+		return nil
+	}
+	if stdout, err = r.topRunner.Start(ctx, r.interval); err != nil {
+		return fmt.Errorf("intel-gpu-top: %w", err)
+	}
+	// start aggregating from the new instance's output.
+	// any previous goroutines will stop as soon as the previous stdout is closed.
+	go func() {
+		stdout = igt.V118toV117{Reader: stdout}
+		if err := r.Aggregator.Read(stdout); err != nil {
+			r.logger.Error("failed to start reader", "err", err)
+		}
+	}()
+	// reset the timer
+	r.Aggregator.lastUpdate.Store(time.Now())
+	return nil
 }
 
 // TopRunner starts / stops an instance of intel-gpu-top
@@ -112,7 +120,6 @@ func (t *TopRunner) Start(ctx context.Context, interval time.Duration) (io.Reade
 
 func buildCommand(scanInterval time.Duration) []string {
 	//const gpuTopCommand = "ssh ubuntu@nuc1 sudo intel_gpu_top -J -s"
-	//const gpuTopCommand = "kubectl -n infra exec intel-gpu-exporter-6dllv -- intel_gpu_top -J -s"
 	const gpuTopCommand = "intel_gpu_top -J -s"
 
 	return append(

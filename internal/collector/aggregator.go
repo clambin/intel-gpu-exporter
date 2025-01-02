@@ -126,7 +126,7 @@ func (a *Aggregator) EngineStats() EngineStats {
 			Unit: stats[0].Unit,
 		}
 	}
-	a.logger.Debug("engine stats collected", "samples", len(a.stats), "engines", engineStats)
+	//a.logger.Debug("engine stats collected", "samples", len(a.stats), "engines", engineStats)
 	return engineStats
 }
 
