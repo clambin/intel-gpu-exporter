@@ -126,9 +126,9 @@ func (r *V118toV117) Read(p []byte) (n int, err error) {
 			r.jsonTracker.Process(char)
 
 			// If a complete JSON object is detected, add it to r.output.
-			// r.output.ReadFrom clears jsonTracker's buffer.
+			// r.output.WriteTo empties jsonTracker's buffer.
 			if obj, ok := r.jsonTracker.HasCompleteObject(); ok {
-				_, _ = r.output.ReadFrom(obj)
+				_, _ = obj.WriteTo(&r.output)
 			}
 		}
 	}
@@ -169,7 +169,7 @@ func (r *jsonTracker) atRootLevel() bool {
 	return r.nestingLevel == 0 && !r.inString
 }
 
-func (r *jsonTracker) HasCompleteObject() (io.Reader, bool) {
+func (r *jsonTracker) HasCompleteObject() (*bytes.Buffer, bool) {
 	if r.atRootLevel() && r.buffer.Len() > 0 {
 		return &r.buffer, true
 	}

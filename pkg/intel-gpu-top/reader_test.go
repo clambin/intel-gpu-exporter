@@ -76,7 +76,7 @@ func TestJsonTracker(t *testing.T) {
 		if ok {
 			require.NotNil(t, r)
 			var buf bytes.Buffer
-			_, err := buf.ReadFrom(r)
+			_, err := r.WriteTo(&buf)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantBody, buf.String())
 		}
@@ -84,10 +84,10 @@ func TestJsonTracker(t *testing.T) {
 }
 
 // Before:
-// BenchmarkV118toV117-16           3372247               354.8 ns/op            64 B/op          2 allocs/op
+// BenchmarkV118toV117-16        3372247         354.8 ns/op          64 B/op          2 allocs/op
 //
 // Now:
-// BenchmarkV118toV117-16    	      17472	              68140 ns/op	       8304 B/op	     11 allocs/op
+// BenchmarkV118toV117-16    	   17662	     67609 ns/op	    6064 B/op	      10 allocs/op
 //
 // Slower, but more robust.
 func BenchmarkV118toV117(b *testing.B) {
