@@ -4,7 +4,7 @@ on:
   push:
     branches-ignore:
       - main
-      - stalled
+      - convert
   pull_request_target:
 
 jobs:

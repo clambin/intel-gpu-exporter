@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"strings"
 )
 
 // GPUStats contains GPU utilization, as presented by intel-gpu-top
@@ -92,25 +93,85 @@ var _ io.Reader = &V118toV117{}
 //
 // This means json.Decoder will try to read in the full array, where we want to stream the individual records.
 // V118toV117 solves this by removed the array & comma tokens, turning the data back to V1.17 layout.
-//
-// Note: this is *very* dependent on the actual layout of intel_gpu_top's output and will probably break at some point.
 type V118toV117 struct {
-	Reader io.Reader
+	Source io.Reader
+	output bytes.Buffer
+	buffer [512]byte // json reads in 512 blocks
+	jsonTracker
 }
 
-// Read implements the io.Reader interface
-func (v V118toV117) Read(p []byte) (n int, err error) {
-	n, err = v.Reader.Read(p)
-	if err != nil || n == 0 {
-		return n, err
+// Read reads from the source and extracts complete JSON objects.
+func (r *V118toV117) Read(p []byte) (n int, err error) {
+	if r.output.Len() > 0 {
+		return r.output.Read(p)
 	}
-	// note: for ',', this assumes we'll never receive two records in a single read. in practice, this is the case,
-	// but may break at some point!
-	if p[0] == '[' || p[0] == ',' {
-		p[0] = ' '
+
+	// don't allocate a buffer on every read
+	buf := r.buffer[:]
+	for r.output.Len() == 0 {
+		clear(buf)
+		if n, err = r.Source.Read(buf); err == io.EOF {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+		// run each byte through jsonTracker. when we've collected a complete JSON object,
+		// add it to r.output.
+		for _, char := range buf[:n] {
+			// skip any [, ] or , at root level. This turns the stream into a V117-compliant structure.
+			if r.jsonTracker.atRootLevel() && strings.IndexByte("[],", char) != -1 {
+				continue
+			}
+			r.jsonTracker.Process(char)
+
+			// If a complete JSON object is detected, add it to r.output.
+			// r.output.ReadFrom clears jsonTracker's buffer.
+			if obj, ok := r.jsonTracker.HasCompleteObject(); ok {
+				_, _ = r.output.ReadFrom(obj)
+			}
+		}
 	}
-	if len(p) > 2 && bytes.Equal(p[len(p)-3:], []byte("\n]\n")) {
-		n -= 3
+	return r.output.Read(p)
+}
+
+// jsonTracker is a helper for V118toV117 that reads in json data and works out when we've received a complete json object.
+type jsonTracker struct {
+	buffer       bytes.Buffer
+	nestingLevel int
+	inString     bool
+	escapeNext   bool
+}
+
+func (r *jsonTracker) Process(char byte) {
+	r.buffer.WriteByte(char)
+	if r.inString {
+		if r.escapeNext {
+			r.escapeNext = false
+		} else if char == '\\' {
+			r.escapeNext = true
+		} else if char == '"' {
+			r.inString = false
+		}
+	} else {
+		switch char {
+		case '{':
+			r.nestingLevel++
+		case '}':
+			r.nestingLevel--
+		case '"':
+			r.inString = true
+		}
 	}
-	return n, err
+}
+
+func (r *jsonTracker) atRootLevel() bool {
+	return r.nestingLevel == 0 && !r.inString
+}
+
+func (r *jsonTracker) HasCompleteObject() (io.Reader, bool) {
+	if r.atRootLevel() && r.buffer.Len() > 0 {
+		return &r.buffer, true
+	}
+	return nil, false
 }

@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - stalled
+      - convert
 
 permissions:
   packages: write

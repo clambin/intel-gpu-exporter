@@ -85,7 +85,7 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 	// start aggregating from the new instance's output.
 	// any previous goroutines will stop as soon as the previous stdout is closed.
 	go func() {
-		stdout = igt.V118toV117{Reader: stdout}
+		stdout = &igt.V118toV117{Source: stdout}
 		if err := r.Aggregator.Read(stdout); err != nil {
 			r.logger.Error("failed to start reader", "err", err)
 		}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"testing"
 	"time"
@@ -35,7 +36,7 @@ func TestReadGPUStats(t *testing.T) {
 			r := testutil.FakeServer(ctx, []byte(testutil.SinglePayload), tt.send, tt.array, tt.commas, 50*time.Millisecond)
 
 			if tt.convert {
-				r = &V118toV117{Reader: r}
+				r = &V118toV117{Source: r}
 			}
 			var got int
 			var err error
@@ -51,8 +52,44 @@ func TestReadGPUStats(t *testing.T) {
 	}
 }
 
-// Current:
+func TestJsonTracker(t *testing.T) {
+	tests := []struct {
+		input    string
+		wantBody string
+		wantOk   bool
+	}{
+		{`{ "foo": "bar" `, ``, false},
+		{`}`, `{ "foo": "bar" }`, true},
+		{`{ "foo": "bar" }`, `{ "foo": "bar" }`, true},
+		{`{ "foo": "bar`, ``, false},
+		{`" }`, `{ "foo": "bar" }`, true},
+		{`{ "foo": "\"bar\"" }`, `{ "foo": "\"bar\"" }`, true},
+	}
+
+	var tracker jsonTracker
+	for _, tt := range tests {
+		for _, ch := range tt.input {
+			tracker.Process(byte(ch))
+		}
+		r, ok := tracker.HasCompleteObject()
+		require.Equal(t, tt.wantOk, ok)
+		if ok {
+			require.NotNil(t, r)
+			var buf bytes.Buffer
+			_, err := buf.ReadFrom(r)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantBody, buf.String())
+		}
+	}
+}
+
+// Before:
 // BenchmarkV118toV117-16           3372247               354.8 ns/op            64 B/op          2 allocs/op
+//
+// Now:
+// BenchmarkV118toV117-16    	      17472	              68140 ns/op	       8304 B/op	     11 allocs/op
+//
+// Slower, but more robust.
 func BenchmarkV118toV117(b *testing.B) {
 	// generate input outside the benchmark
 	var payload bytes.Buffer
@@ -60,12 +97,11 @@ func BenchmarkV118toV117(b *testing.B) {
 	if _, err := payload.ReadFrom(r); err != nil {
 		b.Fatal(err)
 	}
-	b.ResetTimer()
-	b.ReportAllocs()
 	buf := make([]byte, 2048)
+	b.ReportAllocs()
+	b.ResetTimer()
 	for range b.N {
-		r = V118toV117{Reader: bytes.NewReader(payload.Bytes())}
-
+		r = &V118toV117{Source: bytes.NewReader(payload.Bytes())}
 		var err error
 		for !errors.Is(err, io.EOF) {
 			clear(buf)
