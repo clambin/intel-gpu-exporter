@@ -1,14 +1,11 @@
 name: release
-
 on:
   push:
     tags:
       - 'v*'
-
 permissions:
-  packages: write
   contents: write
-
+  packages: write
 jobs:
   test:
     uses: clambin/workflows/.github/workflows/test.yaml@main
