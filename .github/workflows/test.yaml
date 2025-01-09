@@ -4,7 +4,7 @@ on:
   push:
     branches-ignore:
       - main
-      - convert
+      - pprof
   pull_request_target:
 
 jobs:

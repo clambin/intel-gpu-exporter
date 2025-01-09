@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log/slog"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,6 +23,8 @@ var (
 )
 
 func main() {
+	go func() { _ = http.ListenAndServe(":6000", nil) }()
+
 	flag.Parse()
 
 	var handlerOpts slog.HandlerOptions
