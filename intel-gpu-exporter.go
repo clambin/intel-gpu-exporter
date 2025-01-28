@@ -23,8 +23,6 @@ var (
 )
 
 func main() {
-	go func() { _ = http.ListenAndServe(":6000", nil) }()
-
 	flag.Parse()
 
 	var handlerOpts slog.HandlerOptions
