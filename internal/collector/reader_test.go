@@ -17,16 +17,14 @@ func Test_buildCommand(t *testing.T) {
 
 func TestTopReader_Run(t *testing.T) {
 	//l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	l := slog.New(slog.NewTextHandler(io.Discard, nil))
+	l := slog.New(slog.DiscardHandler)
 	r := NewTopReader(l, 100*time.Millisecond)
 	fake := fakeRunner{interval: 100 * time.Millisecond}
 	r.topRunner = &fake
 	r.timeout = time.Second
 
 	// start the reader
-	ctx, cancel := context.WithCancel(context.Background())
-	errCh := make(chan error)
-	go func() { errCh <- r.Run(ctx) }()
+	go func() { assert.NoError(t, r.Run(t.Context())) }()
 
 	// wait for at least 5 measurements to be made
 	assert.Eventually(t, func() bool {
@@ -43,10 +41,6 @@ func TestTopReader_Run(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		return r.Aggregator.len() > got
 	}, 2*time.Second, 100*time.Millisecond)
-
-	// shutdown
-	cancel()
-	assert.NoError(t, <-errCh)
 }
 
 var _ topRunner = &fakeRunner{}

@@ -3,7 +3,6 @@
 [![codecov](https://img.shields.io/codecov/c/gh/clambin/intel-gpu-exporter?style=plastic)](https://app.codecov.io/gh/clambin/intel-gpu-exporter)
 [![build](https://github.com/clambin/intel-gpu-exporter/workflows/build/badge.svg)](https://github.com/clambin/intel-gpu-exporter/actions)
 [![go report card](https://goreportcard.com/badge/github.com/clambin/intel-gpu-exporter)](https://goreportcard.com/report/github.com/clambin/intel-gpu-exporter)
-[![godoc](https://pkg.go.dev/badge/github.com/clambin/intel-gpu-exporter?utm_source=godoc)](https://pkg.go.dev/github.com/clambin/intel-gpu-exporter)
 [![license](https://img.shields.io/github/license/clambin/intel-gpu-exporter?style=plastic)](LICENSE.md)
 
 Exports GPU statistics for Intel Quick Sync Video GPUs.

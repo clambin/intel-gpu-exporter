@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -15,16 +14,12 @@ import (
 )
 
 func TestAggregator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
 	const payloadCount = 4
 	fake := fakeRunner{interval: time.Millisecond}
-	r, _ := fake.Start(ctx, nil)
+	r, _ := fake.Start(t.Context(), nil)
 	var a Aggregator
-	a.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
-	errCh := make(chan error)
-	go func() { errCh <- a.Read(r) }()
+	a.logger = slog.New(slog.DiscardHandler)
+	go func() { assert.NoError(t, a.Read(r)) }()
 
 	// a.Read works asynchronously. Wait for all data to be read.
 	assert.Eventually(t, func() bool { return len(a.EngineStats()) >= payloadCount }, time.Second, time.Millisecond)
@@ -43,9 +38,6 @@ func TestAggregator(t *testing.T) {
 	gpu, pkg := a.PowerStats()
 	assert.Equal(t, 1.0, gpu)
 	assert.Equal(t, 4.0, pkg)
-
-	cancel()
-	assert.NoError(t, <-errCh)
 }
 
 func TestAggregator_Reset(t *testing.T) {
@@ -66,13 +58,11 @@ func TestAggregator_Reset(t *testing.T) {
 }
 
 func TestAggregator_Collect(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
 	fake := fakeRunner{interval: time.Millisecond}
-	r, _ := fake.Start(ctx, nil)
+	r, _ := fake.Start(t.Context(), nil)
 	var a Aggregator
-	a.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
-	errCh := make(chan error)
-	go func() { errCh <- a.Read(r) }()
+	a.logger = slog.New(slog.DiscardHandler)
+	go func() { assert.NoError(t, a.Read(r)) }()
 
 	// wait for the aggregator to read in the data
 	assert.Eventually(t, func() bool { return a.len() > 0 }, time.Second, time.Millisecond)
@@ -102,9 +92,6 @@ gpumon_engine_usage{attrib="wait",engine="VideoEnhance"} 0
 gpumon_power{type="gpu"} 1
 gpumon_power{type="pkg"} 4
 `)))
-
-	cancel()
-	assert.NoError(t, <-errCh)
 }
 
 func TestEngineStats_LogValue(t *testing.T) {
@@ -158,12 +145,11 @@ func Benchmark_medianFunc(b *testing.B) {
 }
 
 // Current:
-// BenchmarkAggregator_EngineStats-16          5324            218936 ns/op          262684 B/op         19 allocs/op
+// BenchmarkAggregator_EngineStats-16    	    4473	    258506 ns/op	  262695 B/op	      19 allocs/op
 func BenchmarkAggregator_EngineStats(b *testing.B) {
-	const count = 1001
+	a := Aggregator{logger: slog.New(slog.DiscardHandler)}
 	var engineNames = []string{"Render/3D", "Blitter", "Video", "VideoEnhance"}
-	var a Aggregator
-	a.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	const count = 1001
 	for range count {
 		var stats igt.GPUStats
 		stats.Engines = make(map[string]igt.EngineStats, len(engineNames))
@@ -173,7 +159,8 @@ func BenchmarkAggregator_EngineStats(b *testing.B) {
 		a.add(stats)
 	}
 	b.ResetTimer()
-	for range b.N {
+	b.ReportAllocs()
+	for b.Loop() {
 		if stats := a.EngineStats(); len(stats) != len(engineNames) {
 			b.Fatalf("expected %d engines, got %d", len(engineNames), len(stats))
 		}

@@ -96,8 +96,8 @@ var _ io.Reader = &V118toV117{}
 type V118toV117 struct {
 	Source io.Reader
 	output bytes.Buffer
-	buffer [512]byte // json reads in 512 blocks
 	jsonTracker
+	buffer [512]byte // json reads in 512 blocks
 }
 
 // Read reads from the source and extracts complete JSON objects.
