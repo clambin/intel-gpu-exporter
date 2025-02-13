@@ -145,7 +145,7 @@ func Benchmark_medianFunc(b *testing.B) {
 }
 
 // Current:
-// BenchmarkAggregator_EngineStats-16    	    4473	    258506 ns/op	  262695 B/op	      19 allocs/op
+// BenchmarkAggregator_EngineStats-16    	    4759	    246878 ns/op	  262697 B/op	      19 allocs/op
 func BenchmarkAggregator_EngineStats(b *testing.B) {
 	a := Aggregator{logger: slog.New(slog.DiscardHandler)}
 	var engineNames = []string{"Render/3D", "Blitter", "Video", "VideoEnhance"}

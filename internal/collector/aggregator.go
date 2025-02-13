@@ -178,9 +178,9 @@ func medianFunc[T any](entries []T, f func(T) float64) float64 {
 		return 0
 	}
 	n := len(entries)
-	values := make([]float64, 0, len(entries))
-	for _, entry := range entries {
-		values = append(values, f(entry))
+	values := make([]float64, len(entries))
+	for i, entry := range entries {
+		values[i] = f(entry)
 	}
 	slices.Sort(values)
 	// Check if the number of elements is odd or even
