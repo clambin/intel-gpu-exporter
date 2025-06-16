@@ -1,4 +1,4 @@
-name: release
+name: Release
 on:
   push:
     tags:
@@ -7,18 +7,10 @@ permissions:
   contents: write
   packages: write
 jobs:
-  test:
-    uses: clambin/workflows/.github/workflows/test.yaml@main
-    secrets:
-      codecov-token: ${{ secrets.CODECOV_TOKEN }}
   build:
-    needs:
-      - test
-    uses: clambin/workflows/.github/workflows/build.yaml@main
+    uses: ./.github/workflows/build.yaml
     with:
-      dockerfile: Dockerfile
-      image: ghcr.io/clambin/intel-gpu-exporter
-      platforms: linux/amd64
+      tags: "type=semver,pattern={{version}}"
   release:
     needs:
       - build

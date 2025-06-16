@@ -1,22 +1,25 @@
-name: build
+name: Build
 on:
   push:
     branches:
-      - main
-      - pprof
+      - master
+  workflow_call:
+    inputs:
+      tags:
+        type: string
+        required: false
+        default: |
+          type=sha
 permissions:
   contents: read
   packages: write
 jobs:
   test:
-    uses: clambin/workflows/.github/workflows/test.yaml@main
-    secrets:
-      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+    uses: ./.github/workflows/test.yaml
   build:
     needs:
       - test
-    uses: clambin/workflows/.github/workflows/build.yaml@main
+    uses: clambin/workflows/.github/workflows/build.yaml@docker
     with:
-      dockerfile: Dockerfile
       image: ghcr.io/clambin/intel-gpu-exporter
-      platforms: linux/amd64
+      tags: "${{ inputs.tags || 'type=sha' }}"
