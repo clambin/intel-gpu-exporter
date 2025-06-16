@@ -4,45 +4,39 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"github.com/clambin/intel-gpu-exporter/internal/collector"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"log/slog"
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"codeberg.org/clambin/go-common/flagger"
+	"github.com/clambin/intel-gpu-exporter/internal/collector"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	debug    = flag.Bool("debug", false, "Enable debug logging")
-	addr     = flag.String("addr", ":9090", "Prometheus metrics listener address")
-	interval = flag.Duration("interval", time.Second, "Interval to collect statistics")
-)
+type configuration struct {
+	Interval time.Duration `flagger.usage:"Interval to collect statistics"`
+	flagger.Log
+	flagger.Prom
+}
 
 func main() {
+	cfg := configuration{Interval: time.Second}
+	flagger.SetFlags(flag.CommandLine, &cfg)
 	flag.Parse()
-
-	var handlerOpts slog.HandlerOptions
-	if *debug {
-		handlerOpts.Level = slog.LevelDebug
-	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &handlerOpts))
-
-	http.Handle("/metrics", promhttp.Handler())
-	go func() {
-		if err := http.ListenAndServe(*addr, nil); !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("failed to start metrics server", "err", err)
-			os.Exit(1)
-		}
-	}()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	if err := collector.Run(ctx, prometheus.DefaultRegisterer, *interval, logger); err != nil {
+	logger := cfg.Logger(os.Stderr, nil)
+	go func() {
+		if err := cfg.Serve(ctx); !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("Prometheus server error", "err", err)
+		}
+	}()
+
+	if err := collector.Run(ctx, prometheus.DefaultRegisterer, cfg.Interval, logger); err != nil {
 		logger.Error("collector failed to start", "err", err)
 		os.Exit(1)
 	}

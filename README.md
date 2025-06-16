@@ -9,7 +9,6 @@ Exports GPU statistics for Intel Quick Sync Video GPUs.
 
 # Metrics
 
-
 | metric | type |  labels | help                                               |
 | --- | --- |  --- |----------------------------------------------------|
 | gpumon_clients_count | GAUGE | | Number of active clients (currently not supported) |
