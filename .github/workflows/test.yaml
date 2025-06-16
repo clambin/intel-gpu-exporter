@@ -3,7 +3,7 @@ on:
   pull_request_target:
   push:
     branches-ignore:
-      - master
+      - main
   workflow_call:
 permissions:
   contents: read
