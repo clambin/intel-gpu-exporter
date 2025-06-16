@@ -120,14 +120,14 @@ func (r *V118toV117) Read(p []byte) (n int, err error) {
 		// add it to r.output.
 		for _, char := range buf[:n] {
 			// skip any [, ] or , at root level. This turns the stream into a V117-compliant structure.
-			if r.jsonTracker.atRootLevel() && strings.IndexByte("[],", char) != -1 {
+			if r.atRootLevel() && strings.IndexByte("[],", char) != -1 {
 				continue
 			}
-			r.jsonTracker.Process(char)
+			r.Process(char)
 
 			// If a complete JSON object is detected, add it to r.output.
 			// r.output.WriteTo empties jsonTracker's buffer.
-			if obj, ok := r.jsonTracker.HasCompleteObject(); ok {
+			if obj, ok := r.HasCompleteObject(); ok {
 				_, _ = obj.WriteTo(&r.output)
 			}
 		}

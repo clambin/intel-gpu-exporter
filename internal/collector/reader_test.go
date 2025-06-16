@@ -2,13 +2,14 @@ package collector
 
 import (
 	"context"
-	"github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top/testutil"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"log/slog"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_buildCommand(t *testing.T) {
@@ -28,18 +29,18 @@ func TestTopReader_Run(t *testing.T) {
 
 	// wait for at least 5 measurements to be made
 	assert.Eventually(t, func() bool {
-		return r.Aggregator.len() >= 5
+		return r.len() >= 5
 	}, time.Second, 100*time.Millisecond)
 
 	// remember the current number of measurements
-	got := r.Aggregator.len()
+	got := r.len()
 
 	// stop the current writer
 	fake.Stop()
 
 	// wait for reader to time out and start a new writer.
 	assert.Eventually(t, func() bool {
-		return r.Aggregator.len() > got
+		return r.len() > got
 	}, 2*time.Second, 100*time.Millisecond)
 }
 
