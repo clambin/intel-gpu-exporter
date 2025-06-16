@@ -17,7 +17,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 FROM alpine
 
 RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories
-RUN apk update && apk add --no-cache igt-gpu-tools
+RUN apk add --no-cache igt-gpu-tools
 
 WORKDIR /app
 COPY --from=builder /app/intel-gpu-exporter /app/intel-gpu-exporter

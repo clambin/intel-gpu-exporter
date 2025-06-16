@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - bld
   workflow_call:
     inputs:
       tags:
@@ -23,3 +24,4 @@ jobs:
     with:
       image: ghcr.io/clambin/intel-gpu-exporter
       tags: "${{ inputs.tags || 'type=sha' }}"
+      platforms: linux/amd64

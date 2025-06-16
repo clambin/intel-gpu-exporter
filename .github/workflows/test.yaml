@@ -4,6 +4,7 @@ on:
   push:
     branches-ignore:
       - main
+      - bld
   workflow_call:
 permissions:
   contents: read
