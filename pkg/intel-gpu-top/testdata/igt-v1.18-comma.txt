@@ -1,0 +1,160 @@
+[
+
+{
+        "period": {
+                "duration": 25.262162,
+                "unit": "ms"
+        },
+        "frequency": {
+                "requested": 0.000000,
+                "actual": 0.000000,
+                "unit": "MHz"
+        },
+        "interrupts": {
+                "count": 0.000000,
+                "unit": "irq/s"
+        },
+        "rc6": {
+                "value": 100.000000,
+                "unit": "%"
+        },
+        "power": {
+                "GPU": 0.000000,
+                "Package": 36.407762,
+                "unit": "W"
+        },
+        "imc-bandwidth": {
+                "reads": 2170.189132,
+                "writes": 651.498156,
+                "unit": "MiB/s"
+        },
+        "engines": {
+                "Render/3D": {
+                        "busy": 1.000000,
+                        "sema": 0.000000,
+                        "wait": 0.000000,
+                        "unit": "%"
+                },
+                "Blitter": {
+                        "busy": 2.000000,
+                        "sema": 0.000000,
+                        "wait": 0.000000,
+                        "unit": "%"
+                },
+                "Video": {
+                        "busy": 3.000000,
+                        "sema": 0.000000,
+                        "wait": 0.000000,
+                        "unit": "%"
+                },
+                "VideoEnhance": {
+                        "busy": 4.000000,
+                        "sema": 0.000000,
+                        "wait": 0.000000,
+                        "unit": "%"
+                }
+        },
+        "clients": {
+               "4294879639": {
+                        "name": "foo",
+                        "pid": "87657",
+                        "engine-classes": {
+                                "Render/3D": {
+                                        "busy": "75.449180",
+                                        "unit": "%"
+                                },
+                                "Blitter": {
+                                        "busy": "0.000000",
+                                        "unit": "%"
+                                },
+                                "Video": {
+                                        "busy": "20.849516",
+                                        "unit": "%"
+                                },
+                                "VideoEnhance": {
+                                        "busy": "0.000000",
+                                        "unit": "%"
+                                }
+                        }
+               }
+        }
+},
+{
+        "period": {
+                "duration": 25.262162,
+                "unit": "ms"
+        },
+        "frequency": {
+                "requested": 0.000000,
+                "actual": 0.000000,
+                "unit": "MHz"
+        },
+        "interrupts": {
+                "count": 0.000000,
+                "unit": "irq/s"
+        },
+        "rc6": {
+                "value": 100.000000,
+                "unit": "%"
+        },
+        "power": {
+                "GPU": 0.000000,
+                "Package": 36.407762,
+                "unit": "W"
+        },
+        "imc-bandwidth": {
+                "reads": 2170.189132,
+                "writes": 651.498156,
+                "unit": "MiB/s"
+        },
+        "engines": {
+                "Render/3D": {
+                        "busy": 1.000000,
+                        "sema": 0.000000,
+                        "wait": 0.000000,
+                        "unit": "%"
+                },
+                "Blitter": {
+                        "busy": 2.000000,
+                        "sema": 0.000000,
+                        "wait": 0.000000,
+                        "unit": "%"
+                },
+                "Video": {
+                        "busy": 3.000000,
+                        "sema": 0.000000,
+                        "wait": 0.000000,
+                        "unit": "%"
+                },
+                "VideoEnhance": {
+                        "busy": 4.000000,
+                        "sema": 0.000000,
+                        "wait": 0.000000,
+                        "unit": "%"
+                }
+        },
+        "clients": {
+               "4294879639": {
+                        "name": "foo",
+                        "pid": "87657",
+                        "engine-classes": {
+                                "Render/3D": {
+                                        "busy": "75.449180",
+                                        "unit": "%"
+                                },
+                                "Blitter": {
+                                        "busy": "0.000000",
+                                        "unit": "%"
+                                },
+                                "Video": {
+                                        "busy": "20.849516",
+                                        "unit": "%"
+                                },
+                                "VideoEnhance": {
+                                        "busy": "0.000000",
+                                        "unit": "%"
+                                }
+                        }
+               }
+        }
+}]

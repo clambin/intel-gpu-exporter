@@ -2,9 +2,10 @@ package collector
 
 import (
 	"context"
-	"github.com/prometheus/client_golang/prometheus"
 	"log/slog"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (

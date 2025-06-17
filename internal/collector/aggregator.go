@@ -2,16 +2,17 @@ package collector
 
 import (
 	"fmt"
-	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
-	"github.com/prometheus/client_golang/prometheus"
 	"io"
 	"log/slog"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"codeberg.org/clambin/go-common/gomathic"
+	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -54,7 +55,7 @@ func (a *Aggregator) Read(r io.Reader) error {
 		}
 		a.add(stat)
 		a.lastUpdate.Store(time.Now())
-		//a.logger.Debug("found stats", "stat", stat)
+		a.logger.Debug("found stats", "stat", stat)
 	}
 	return nil
 }
@@ -94,8 +95,8 @@ func (a *Aggregator) Reset() {
 func (a *Aggregator) PowerStats() (float64, float64) {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
-	return medianFunc(a.stats, func(stats igt.GPUStats) float64 { return stats.Power.GPU }),
-		medianFunc(a.stats, func(stats igt.GPUStats) float64 { return stats.Power.Package })
+	return gomathic.MedianFunc(a.stats, func(stats igt.GPUStats) float64 { return stats.Power.GPU }),
+		gomathic.MedianFunc(a.stats, func(stats igt.GPUStats) float64 { return stats.Power.Package })
 }
 
 // EngineStats returns the median GPU Stats for each of the GPU's engines.
@@ -120,9 +121,9 @@ func (a *Aggregator) EngineStats() EngineStats {
 	engineStats := make(EngineStats, len(statsByEngine))
 	for engine, stats := range statsByEngine {
 		engineStats[engine] = igt.EngineStats{
-			Busy: medianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Busy }),
-			Sema: medianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Sema }),
-			Wait: medianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Wait }),
+			Busy: gomathic.MedianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Busy }),
+			Sema: gomathic.MedianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Sema }),
+			Wait: gomathic.MedianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Wait }),
 			Unit: stats[0].Unit,
 		}
 	}
@@ -136,7 +137,7 @@ func (a *Aggregator) EngineStats() EngineStats {
 func (a *Aggregator) ClientStats() float64 {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
-	return medianFunc(a.stats, func(stats igt.GPUStats) float64 { return float64(len(stats.Clients)) })
+	return gomathic.MedianFunc(a.stats, func(stats igt.GPUStats) float64 { return float64(len(stats.Clients)) })
 }
 
 // Describe implements the prometheus.Collector interface.
@@ -171,23 +172,4 @@ func (e EngineStats) LogValue() slog.Value {
 	}
 	sort.Strings(engineNames)
 	return slog.StringValue(strings.Join(engineNames, ","))
-}
-
-func medianFunc[T any](entries []T, f func(T) float64) float64 {
-	if len(entries) == 0 {
-		return 0
-	}
-	n := len(entries)
-	values := make([]float64, len(entries))
-	for i, entry := range entries {
-		values[i] = f(entry)
-	}
-	slices.Sort(values)
-	// Check if the number of elements is odd or even
-	if n%2 == 1 {
-		// Odd length, return the middle element
-		return values[n/2]
-	}
-	// Even length, return the average of the two middle elements
-	return (values[n/2-1] + values[n/2]) / 2
 }

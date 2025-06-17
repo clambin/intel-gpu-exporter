@@ -1,16 +1,16 @@
 package collector
 
 import (
+	"io"
+	"log/slog"
+	"strings"
+	"testing"
+	"time"
+
 	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"log/slog"
-	"slices"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestAggregator(t *testing.T) {
@@ -104,48 +104,8 @@ func TestEngineStats_LogValue(t *testing.T) {
 	assert.Equal(t, "", stats.LogValue().String())
 }
 
-func Test_medianFunc(t *testing.T) {
-	tests := []struct {
-		name   string
-		values []float64
-		want   float64
-	}{
-		{"odd number of values", []float64{4, 3, 2, 1, 0}, 2},
-		{"even number of values", []float64{5, 4, 3, 2, 1, 0}, 2.5},
-		{"single entry", []float64{1}, 1},
-		{"empty slice", nil, 0.0},
-		{"handle duplicates", []float64{1, 1, 1, 2}, 1},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			slices.Reverse(tt.values)
-			assert.Equal(t, tt.want, medianFunc(tt.values, func(f float64) float64 { return f }))
-		})
-	}
-}
-
-// Benchmark_medianFunc/current-16           295650              3847 ns/op            8192 B/op          1 allocs/op
-func Benchmark_medianFunc(b *testing.B) {
-	const count = 1001
-	values := make([]float64, count)
-	for i := range values {
-		values[i] = float64(i)
-	}
-	slices.Reverse(values)
-	want := float64(count / 2)
-	b.ResetTimer()
-	b.Run("current", func(b *testing.B) {
-		for range b.N {
-			if value := medianFunc(values, func(f float64) float64 { return f }); value != want {
-				b.Fatalf("expected %f, got %f", want, value)
-			}
-		}
-	})
-}
-
 // Current:
-// BenchmarkAggregator_EngineStats-16    	    4759	    246878 ns/op	  262697 B/op	      19 allocs/op
+// BenchmarkAggregator_EngineStats-10    	    7832	    152706 ns/op	  262690 B/op	      19 allocs/op
 func BenchmarkAggregator_EngineStats(b *testing.B) {
 	a := Aggregator{logger: slog.New(slog.DiscardHandler)}
 	var engineNames = []string{"Render/3D", "Blitter", "Video", "VideoEnhance"}

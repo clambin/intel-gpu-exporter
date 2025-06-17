@@ -1,5 +1,7 @@
 codeberg.org/clambin/go-common/flagger v0.2.3 h1:5Owf5IIpCmUlDSL1XGHtCTM4WblIimTScTgX8cEOKjE=
 codeberg.org/clambin/go-common/flagger v0.2.3/go.mod h1:BbmB5YvTEq4l/xrwNdkWDIFBpDEA2KHEdCbMd2q81Oc=
+codeberg.org/clambin/go-common/gomathic v0.2.0 h1:nNlgp0ndUMHxFJulETi9TO13BS3f8zZ4D4r2ZnZyeOg=
+codeberg.org/clambin/go-common/gomathic v0.2.0/go.mod h1:5yzePJ0+cqb/12c/RR8uiU79BRzKwmkxAHBM89GYKP4=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
