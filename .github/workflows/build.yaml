@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-      - fix
+      - device
   workflow_call:
     inputs:
       tags:

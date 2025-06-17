@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -12,11 +11,7 @@ var (
 	version = "change-me"
 )
 
-func Run(ctx context.Context, r prometheus.Registerer, scanInterval time.Duration, logger *slog.Logger) error {
-	return runWithTopReader(ctx, r, NewTopReader(logger, scanInterval), logger)
-}
-
-func runWithTopReader(ctx context.Context, r prometheus.Registerer, reader *TopReader, logger *slog.Logger) error {
+func Run(ctx context.Context, r prometheus.Registerer, reader *TopReader, logger *slog.Logger) error {
 	logger.Info("intel-gpu-exporter starting", "version", version)
 	defer logger.Info("intel-gpu-exporter shutting down")
 

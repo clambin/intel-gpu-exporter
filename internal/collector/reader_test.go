@@ -13,13 +13,17 @@ import (
 )
 
 func Test_buildCommand(t *testing.T) {
-	assert.Equal(t, []string{"intel_gpu_top", "-J", "-s", "1000"}, buildCommand(time.Second))
+	cfg := Configuration{
+		Interval: time.Second,
+		Device:   "/dev/null",
+	}
+	assert.Equal(t, []string{"intel_gpu_top", "-J", "-s", "1000", "-d", "/dev/null"}, buildCommand(cfg))
 }
 
 func TestTopReader_Run(t *testing.T) {
 	//l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	l := slog.New(slog.DiscardHandler)
-	r := NewTopReader(l, 100*time.Millisecond)
+	r := NewTopReader(Configuration{Interval: 100 * time.Millisecond}, l)
 	fake := fakeRunner{interval: 100 * time.Millisecond}
 	r.topRunner = &fake
 	r.timeout = time.Second

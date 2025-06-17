@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io"
@@ -17,11 +18,11 @@ import (
 // TopReader regularly checks if it's still receiving data from intel-gpu-top. After a timeout, it stops the running instance
 // of intel-gpu-top and start a new instance.
 type TopReader struct {
+	cfg Configuration
 	topRunner
 	logger *slog.Logger
 	Aggregator
-	interval time.Duration
-	timeout  time.Duration
+	timeout time.Duration
 }
 
 // topRunner interface allows us to override Runner during testing.
@@ -32,12 +33,12 @@ type topRunner interface {
 }
 
 // NewTopReader returns a new TopReader that will measure GPU usage at `interval` seconds.
-func NewTopReader(logger *slog.Logger, interval time.Duration) *TopReader {
+func NewTopReader(cfg Configuration, logger *slog.Logger) *TopReader {
 	r := TopReader{
 		logger:     logger,
 		Aggregator: Aggregator{logger: logger.With("subsystem", "aggregator")},
 		topRunner:  &Runner{logger: logger.With("subsystem", "runner")},
-		interval:   interval,
+		cfg:        cfg,
 		timeout:    15 * time.Second,
 	}
 	return &r
@@ -76,8 +77,8 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 	}
 
 	// start a new instance of igt
-	cmdline := buildCommand(r.interval)
-	r.logger.Debug("top command built", "interval", r.interval, "cmd", strings.Join(cmdline, " "))
+	cmdline := buildCommand(r.cfg)
+	r.logger.Debug("top command built", "cmd", strings.Join(cmdline, " "))
 
 	stdout, err := r.Start(ctx, cmdline)
 	if err != nil {
@@ -96,12 +97,15 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 	return nil
 }
 
-func buildCommand(scanInterval time.Duration) []string {
-	//const gpuTopCommand = "ssh ubuntu@nuc1 sudo intel_gpu_top -J -s"
-	const gpuTopCommand = "intel_gpu_top -J -s"
+func buildCommand(cfg Configuration) []string {
+	topCommand := []string{
+		"intel_gpu_top",
+		"-J",
+		"-s", strconv.FormatInt(cmp.Or(cfg.Interval.Milliseconds(), 1000), 10),
+	}
+	if cfg.Device != "" {
+		topCommand = append(topCommand, "-d", cfg.Device)
+	}
 
-	return append(
-		strings.Split(gpuTopCommand, " "),
-		strconv.Itoa(int(scanInterval.Milliseconds())),
-	)
+	return topCommand
 }

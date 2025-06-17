@@ -10,16 +10,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_run(t *testing.T) {
+func TestRun(t *testing.T) {
 	//l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	l := slog.New(slog.DiscardHandler)
 
-	r := prometheus.NewRegistry()
-	reader := NewTopReader(l, 100*time.Millisecond)
+	reader := NewTopReader(Configuration{Interval: 100 * time.Millisecond}, l)
 	reader.topRunner = &fakeRunner{interval: 100 * time.Millisecond}
+	r := prometheus.NewRegistry()
 
 	go func() {
-		assert.NoError(t, runWithTopReader(t.Context(), r, reader, l))
+		assert.NoError(t, Run(t.Context(), r, reader, l))
 	}()
 
 	assert.Eventually(t, func() bool {

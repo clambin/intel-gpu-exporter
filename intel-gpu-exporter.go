@@ -15,14 +15,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type configuration struct {
-	Interval time.Duration `flagger.usage:"Interval to collect statistics"`
-	flagger.Log
-	flagger.Prom
-}
-
 func main() {
-	cfg := configuration{Interval: time.Second}
+	cfg := collector.Configuration{Interval: time.Second}
 	flagger.SetFlags(flag.CommandLine, &cfg)
 	flag.Parse()
 
@@ -30,14 +24,15 @@ func main() {
 	defer cancel()
 
 	logger := cfg.Logger(os.Stderr, nil)
+	r := collector.NewTopReader(cfg, logger)
 	go func() {
-		if err := cfg.Serve(ctx); !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("Prometheus server error", "err", err)
+		if err := collector.Run(ctx, prometheus.DefaultRegisterer, r, logger); err != nil {
+			logger.Error("collector failed to start", "err", err)
+			os.Exit(1)
 		}
 	}()
 
-	if err := collector.Run(ctx, prometheus.DefaultRegisterer, cfg.Interval, logger); err != nil {
-		logger.Error("collector failed to start", "err", err)
-		os.Exit(1)
+	if err := cfg.Serve(ctx); !errors.Is(err, http.ErrServerClosed) {
+		logger.Error("Prometheus server error", "err", err)
 	}
 }
