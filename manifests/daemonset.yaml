@@ -16,7 +16,7 @@ spec:
         app: intel-gpu-exporter
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "9090"
+        prometheus.io/port: "9100"
     spec:
       nodeSelector:
         intel.feature.node.kubernetes.io/gpu: "true"
@@ -30,17 +30,20 @@ spec:
         image: ghcr.io/clambin/intel-gpu-exporter
         args:
         - --interval=1s
+        - --device=drm:/dev/dri/card0
+        - --log.level=debug
+        - --log.format=json
         ports:
         - name: metrics
-          containerPort: 9090
+          containerPort: 9100
         securityContext:
           privileged: true
         resources:
           requests:
-            cpu: 1m
-            memory: 12Mi
+            cpu: 2m
+            memory: 16Mi
           limits:
-            memory: 24Mi
+            memory: 32Mi
         volumeMounts:
           - name: dev-dri
             mountPath: /dev/dri

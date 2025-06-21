@@ -8,20 +8,41 @@ import (
 	"testing"
 	"time"
 
-	"github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top/testutil"
+	"github.com/clambin/intel-gpu-exporter/intel-gpu-top/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_buildCommand(t *testing.T) {
-	cfg := Configuration{
-		Interval: time.Second,
-		Device:   "/dev/null",
+	tests := []struct {
+		name string
+		cfg  Configuration
+		want []string
+	}{
+		{
+			name: "defaults",
+			cfg:  Configuration{},
+			want: []string{"intel_gpu_top", "-J", "-s", "1000"},
+		},
+		{
+			name: "with device",
+			cfg:  Configuration{Device: "/dev/sda"},
+			want: []string{"intel_gpu_top", "-J", "-s", "1000", "-d", "/dev/sda"},
+		},
+		{
+			name: "with interval",
+			cfg:  Configuration{Interval: 5 * time.Second},
+			want: []string{"intel_gpu_top", "-J", "-s", "5000"},
+		},
 	}
-	assert.Equal(t, []string{"intel_gpu_top", "-J", "-s", "1000", "-d", "/dev/null"}, buildCommand(cfg))
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, buildCommand(tt.cfg))
+		})
+	}
 }
 
 func TestTopReader_Run(t *testing.T) {
-	//l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	l := slog.New(slog.DiscardHandler)
 	r := NewTopReader(Configuration{Interval: 100 * time.Millisecond}, l)
 	fake := fakeRunner{interval: 100 * time.Millisecond}

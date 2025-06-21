@@ -1,13 +1,12 @@
 package collector
 
 import (
-	"io"
 	"log/slog"
 	"strings"
 	"testing"
 	"time"
 
-	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
+	igt "github.com/clambin/intel-gpu-exporter/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,7 +41,7 @@ func TestAggregator(t *testing.T) {
 
 func TestAggregator_Reset(t *testing.T) {
 	var a Aggregator
-	a.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	a.logger = slog.New(slog.DiscardHandler)
 
 	assert.Len(t, a.stats, 0)
 	a.Reset()

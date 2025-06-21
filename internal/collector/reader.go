@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
+	igt "github.com/clambin/intel-gpu-exporter/intel-gpu-top"
 )
 
 // TopReader starts intel-gpu-top, reads/decodes its output and collects the sampler for the Collector to export them to Prometheus.

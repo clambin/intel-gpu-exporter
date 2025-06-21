@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"codeberg.org/clambin/go-common/flagger"
 	"github.com/clambin/intel-gpu-exporter/internal/collector"
@@ -16,7 +15,7 @@ import (
 )
 
 func main() {
-	cfg := collector.Configuration{Interval: time.Second}
+	var cfg collector.Configuration
 	flagger.SetFlags(flag.CommandLine, &cfg)
 	flag.Parse()
 

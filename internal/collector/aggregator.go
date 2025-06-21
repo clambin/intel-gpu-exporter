@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"codeberg.org/clambin/go-common/gomathic"
-	igt "github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top"
+	igt "github.com/clambin/intel-gpu-exporter/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/clambin/intel-gpu-exporter/pkg/intel-gpu-top/testutil"
+	"github.com/clambin/intel-gpu-exporter/intel-gpu-top/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
