@@ -20,6 +20,7 @@ spec:
     spec:
       nodeSelector:
         intel.feature.node.kubernetes.io/gpu: "true"
+      hostPID: true
       volumes:
         - name: dev-dri
           hostPath:

@@ -123,11 +123,11 @@ func (r *V118toV117) Read(p []byte) (n int, err error) {
 			if r.atRootLevel() && strings.IndexByte("[],", char) != -1 {
 				continue
 			}
-			r.Process(char)
+			r.process(char)
 
 			// If a complete JSON object is detected, add it to r.output.
 			// r.output.WriteTo empties jsonTracker's buffer.
-			if obj, ok := r.HasCompleteObject(); ok {
+			if obj, ok := r.hasCompleteObject(); ok {
 				_, _ = obj.WriteTo(&r.output)
 			}
 		}
@@ -143,7 +143,7 @@ type jsonTracker struct {
 	escapeNext   bool
 }
 
-func (r *jsonTracker) Process(char byte) {
+func (r *jsonTracker) process(char byte) {
 	r.buffer.WriteByte(char)
 	if r.inString {
 		if r.escapeNext {
@@ -169,7 +169,7 @@ func (r *jsonTracker) atRootLevel() bool {
 	return r.nestingLevel == 0 && !r.inString
 }
 
-func (r *jsonTracker) HasCompleteObject() (*bytes.Buffer, bool) {
+func (r *jsonTracker) hasCompleteObject() (*bytes.Buffer, bool) {
 	if r.atRootLevel() && r.buffer.Len() > 0 {
 		return &r.buffer, true
 	}

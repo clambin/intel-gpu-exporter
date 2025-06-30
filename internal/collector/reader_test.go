@@ -61,7 +61,7 @@ func TestTopReader_Run(t *testing.T) {
 	got := r.len()
 
 	// stop the current writer
-	fake.Stop()
+	fake.stop()
 
 	// wait for reader to time out and start a new writer.
 	assert.Eventually(t, func() bool {
@@ -76,7 +76,7 @@ type fakeRunner struct {
 	cancel   atomic.Value
 }
 
-func (f *fakeRunner) Start(ctx context.Context, _ []string) (io.Reader, error) {
+func (f *fakeRunner) start(ctx context.Context, _ []string) (io.Reader, error) {
 	subCtx, cancel := context.WithCancel(ctx)
 	f.cancel.Store(cancel)
 	r, w := io.Pipe()
@@ -96,12 +96,12 @@ func (f *fakeRunner) Start(ctx context.Context, _ []string) (io.Reader, error) {
 	return r, nil
 }
 
-func (f *fakeRunner) Stop() {
+func (f *fakeRunner) stop() {
 	if cancel := f.cancel.Load().(context.CancelFunc); cancel != nil {
 		cancel()
 	}
 }
 
-func (f *fakeRunner) Running() bool {
+func (f *fakeRunner) running() bool {
 	return f.cancel.Load() != nil
 }
