@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-      - device
+      - sessions
   workflow_call:
     inputs:
       tags:
