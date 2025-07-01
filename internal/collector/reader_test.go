@@ -21,17 +21,17 @@ func Test_buildCommand(t *testing.T) {
 		{
 			name: "defaults",
 			cfg:  Configuration{},
-			want: []string{"intel_gpu_top", "-J", "-s", "1000"},
+			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "1000"},
 		},
 		{
 			name: "with device",
 			cfg:  Configuration{Device: "/dev/sda"},
-			want: []string{"intel_gpu_top", "-J", "-s", "1000", "-d", "/dev/sda"},
+			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "1000", "-d", "/dev/sda"},
 		},
 		{
 			name: "with interval",
 			cfg:  Configuration{Interval: 5 * time.Second},
-			want: []string{"intel_gpu_top", "-J", "-s", "5000"},
+			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "5000"},
 		},
 	}
 
