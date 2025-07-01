@@ -208,6 +208,7 @@ func (c *Collector) clientStats() map[string]int {
 	for clientName, sessions := range count {
 		result[clientName] = gomathic.Median(sessions)
 	}
+	c.logger.Debug("client stats collected", "samples", len(c.stats), "clients", result)
 	return result
 }
 
