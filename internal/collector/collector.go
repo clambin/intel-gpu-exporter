@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -183,7 +184,7 @@ func (c *Collector) engineStats() engineStats {
 }
 
 // clientStats returns the median number of clients using the GPU.
-func (c *Collector) clientStats() map[string]int {
+func (c *Collector) clientStats() clientStats {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	// count the clients in each sample.
@@ -204,7 +205,7 @@ func (c *Collector) clientStats() map[string]int {
 		}
 	}
 	// tally the results.
-	result := make(map[string]int, len(count))
+	result := make(clientStats, len(count))
 	for clientName, sessions := range count {
 		result[clientName] = gomathic.Median(sessions)
 	}
@@ -221,6 +222,16 @@ func (e engineStats) LogValue() slog.Value {
 	for engineName := range e {
 		engineNames = append(engineNames, engineName)
 	}
-	sort.Strings(engineNames)
+	slices.Sort(engineNames)
 	return slog.StringValue(strings.Join(engineNames, ","))
+}
+
+var _ slog.LogValuer = clientStats{}
+
+type clientStats map[string]int
+
+func (c clientStats) LogValue() slog.Value {
+	clientNames := slices.Collect(maps.Keys(c))
+	slices.Sort(clientNames)
+	return slog.StringValue(strings.Join(clientNames, ","))
 }

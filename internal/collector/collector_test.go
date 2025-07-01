@@ -54,7 +54,7 @@ func TestCollector(t *testing.T) {
 		assert.Equal(t, "%", engineStats[engineName].Unit)
 	}
 	assert.Equal(t, map[string]float64{"gpu": 1.0, "pkg": 4.0}, a.powerStats())
-	assert.Equal(t, map[string]int{"foo": 1}, a.clientStats())
+	assert.Equal(t, clientStats{"foo": 1}, a.clientStats())
 }
 
 func TestCollector_Reset(t *testing.T) {
@@ -117,15 +117,25 @@ func TestCollector_clientStats(t *testing.T) {
 	c.stats = []igt.GPUStats{
 		{Clients: map[string]igt.ClientStats{"_1": {Name: "foo"}}},
 	}
-	assert.Equal(t, map[string]int{"foo": 1}, c.clientStats())
+	assert.Equal(t, clientStats{"foo": 1}, c.clientStats())
 	c.reset()
-	assert.Equal(t, map[string]int{"foo": 0}, c.clientStats())
+	assert.Equal(t, clientStats{"foo": 0}, c.clientStats())
 }
 
 func TestEngineStats_LogValue(t *testing.T) {
 	stats := engineStats{
 		"FOO": {},
 		"BAR": {},
+	}
+	assert.Equal(t, "BAR,FOO", stats.LogValue().String())
+	clear(stats)
+	assert.Equal(t, "", stats.LogValue().String())
+}
+
+func TestClientStats_LogValue(t *testing.T) {
+	stats := clientStats{
+		"FOO": 1,
+		"BAR": 2,
 	}
 	assert.Equal(t, "BAR,FOO", stats.LogValue().String())
 	clear(stats)
