@@ -21,17 +21,17 @@ func Test_buildCommand(t *testing.T) {
 		{
 			name: "defaults",
 			cfg:  Configuration{},
-			want: []string{"intel_gpu_top", "-J", "-s", "1000"},
+			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "1000"},
 		},
 		{
 			name: "with device",
 			cfg:  Configuration{Device: "/dev/sda"},
-			want: []string{"intel_gpu_top", "-J", "-s", "1000", "-d", "/dev/sda"},
+			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "1000", "-d", "/dev/sda"},
 		},
 		{
 			name: "with interval",
 			cfg:  Configuration{Interval: 5 * time.Second},
-			want: []string{"intel_gpu_top", "-J", "-s", "5000"},
+			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "5000"},
 		},
 	}
 
@@ -44,7 +44,7 @@ func Test_buildCommand(t *testing.T) {
 
 func TestTopReader_Run(t *testing.T) {
 	l := slog.New(slog.DiscardHandler)
-	r := NewTopReader(Configuration{Interval: 100 * time.Millisecond}, l)
+	r := newTopReader(Configuration{Interval: 100 * time.Millisecond}, l)
 	fake := fakeRunner{interval: 100 * time.Millisecond}
 	r.topRunner = &fake
 	r.timeout = time.Second
@@ -54,18 +54,18 @@ func TestTopReader_Run(t *testing.T) {
 
 	// wait for at least 5 measurements to be made
 	assert.Eventually(t, func() bool {
-		return r.len() >= 5
+		return r.Collector.len() >= 5
 	}, time.Second, 100*time.Millisecond)
 
 	// remember the current number of measurements
-	got := r.len()
+	got := r.Collector.len()
 
 	// stop the current writer
-	fake.Stop()
+	fake.stop()
 
 	// wait for reader to time out and start a new writer.
 	assert.Eventually(t, func() bool {
-		return r.len() > got
+		return r.Collector.len() > got
 	}, 2*time.Second, 100*time.Millisecond)
 }
 
@@ -76,7 +76,7 @@ type fakeRunner struct {
 	cancel   atomic.Value
 }
 
-func (f *fakeRunner) Start(ctx context.Context, _ []string) (io.Reader, error) {
+func (f *fakeRunner) start(ctx context.Context, _ []string) (io.Reader, error) {
 	subCtx, cancel := context.WithCancel(ctx)
 	f.cancel.Store(cancel)
 	r, w := io.Pipe()
@@ -96,12 +96,12 @@ func (f *fakeRunner) Start(ctx context.Context, _ []string) (io.Reader, error) {
 	return r, nil
 }
 
-func (f *fakeRunner) Stop() {
+func (f *fakeRunner) stop() {
 	if cancel := f.cancel.Load().(context.CancelFunc); cancel != nil {
 		cancel()
 	}
 }
 
-func (f *fakeRunner) Running() bool {
+func (f *fakeRunner) running() bool {
 	return f.cancel.Load() != nil
 }

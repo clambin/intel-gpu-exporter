@@ -32,9 +32,9 @@ func TestJsonTracker(t *testing.T) {
 	var tracker jsonTracker
 	for _, tt := range tests {
 		for _, ch := range tt.input {
-			tracker.Process(byte(ch))
+			tracker.process(byte(ch))
 		}
-		r, ok := tracker.HasCompleteObject()
+		r, ok := tracker.hasCompleteObject()
 		require.Equal(t, tt.wantOk, ok)
 		if ok {
 			require.NotNil(t, r)

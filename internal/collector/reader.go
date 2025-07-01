@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"codeberg.org/clambin/go-common/set"
 	igt "github.com/clambin/intel-gpu-exporter/intel-gpu-top"
 )
 
@@ -20,26 +21,26 @@ import (
 type TopReader struct {
 	cfg Configuration
 	topRunner
-	logger *slog.Logger
-	Aggregator
-	timeout time.Duration
+	logger    *slog.Logger
+	Collector Collector
+	timeout   time.Duration
 }
 
-// topRunner interface allows us to override Runner during testing.
+// topRunner interface allows us to override runner during testing.
 type topRunner interface {
-	Start(ctx context.Context, cmdline []string) (io.Reader, error)
-	Stop()
-	Running() bool
+	start(ctx context.Context, cmdline []string) (io.Reader, error)
+	stop()
+	running() bool
 }
 
-// NewTopReader returns a new TopReader that will measure GPU usage at `interval` seconds.
-func NewTopReader(cfg Configuration, logger *slog.Logger) *TopReader {
+// newTopReader returns a new TopReader that measures GPU usage at `interval` seconds.
+func newTopReader(cfg Configuration, logger *slog.Logger) *TopReader {
 	r := TopReader{
-		logger:     logger,
-		Aggregator: Aggregator{logger: logger.With("subsystem", "aggregator")},
-		topRunner:  &Runner{logger: logger.With("subsystem", "runner")},
-		cfg:        cfg,
-		timeout:    15 * time.Second,
+		logger:    logger,
+		Collector: Collector{clients: set.New[string](), logger: logger.With("subsystem", "aggregator")},
+		topRunner: &runner{logger: logger.With("subsystem", "runner")},
+		cfg:       cfg,
+		timeout:   15 * time.Second,
 	}
 	return &r
 }
@@ -57,7 +58,7 @@ func (r *TopReader) Run(ctx context.Context) error {
 		}
 		select {
 		case <-ctx.Done():
-			r.Stop()
+			r.stop()
 			return nil
 		case <-ticker.C:
 		}
@@ -66,21 +67,21 @@ func (r *TopReader) Run(ctx context.Context) error {
 
 func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 	// if we have received data  `timeout` seconds, do nothing
-	last, ok := r.LastUpdate()
+	last, ok := r.Collector.lastUpdate()
 	if ok && time.Since(last) < r.timeout {
 		return nil
 	}
-	if r.Running() {
+	if r.running() {
 		// Shut down the current instance of igt.
 		r.logger.Warn("timed out waiting for data. restarting intel-gpu-top", "waitTime", time.Since(last))
-		r.Stop()
+		r.stop()
 	}
 
 	// start a new instance of igt
 	cmdline := buildCommand(r.cfg)
 	r.logger.Debug("top command built", "cmd", strings.Join(cmdline, " "))
 
-	stdout, err := r.Start(ctx, cmdline)
+	stdout, err := r.start(ctx, cmdline)
 	if err != nil {
 		return fmt.Errorf("intel-gpu-top: %w", err)
 	}
@@ -88,18 +89,18 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 	// any previous goroutines will stop as soon as the previous stdout is closed.
 	go func() {
 		stdout = &igt.V118toV117{Source: stdout}
-		if err := r.Read(stdout); err != nil {
+		if err := r.Collector.read(stdout); err != nil {
 			r.logger.Error("failed to start reader", "err", err)
 		}
 	}()
 	// reset the timer
-	r.lastUpdate.Store(time.Now())
+	r.Collector.lastUpdated.Store(time.Now())
 	return nil
 }
 
 func buildCommand(cfg Configuration) []string {
 	topCommand := []string{
-		"intel_gpu_top",
+		"/usr/bin/intel_gpu_top",
 		"-J",
 		"-s", strconv.FormatInt(cmp.Or(cfg.Interval.Milliseconds(), 1000), 10),
 	}

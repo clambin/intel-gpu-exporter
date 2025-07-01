@@ -20,6 +20,7 @@ spec:
     spec:
       nodeSelector:
         intel.feature.node.kubernetes.io/gpu: "true"
+      hostPID: true
       volumes:
         - name: dev-dri
           hostPath:
@@ -29,7 +30,7 @@ spec:
       - name: intel-gpu-exporter
         image: ghcr.io/clambin/intel-gpu-exporter
         args:
-        - --interval=1s
+        - --interval=5s
         - --device=drm:/dev/dri/card0
         - --log.level=debug
         - --log.format=json
@@ -40,10 +41,10 @@ spec:
           privileged: true
         resources:
           requests:
-            cpu: 2m
-            memory: 16Mi
+            cpu: 10m
+            memory: 22Mi
           limits:
-            memory: 32Mi
+            memory: 44Mi
         volumeMounts:
           - name: dev-dri
             mountPath: /dev/dri

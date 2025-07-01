@@ -9,14 +9,14 @@ import (
 	"sync/atomic"
 )
 
-// Runner starts / stops a process and collects its stdout output.
-type Runner struct {
+// runner starts / stops a process and collects its stdout output.
+type runner struct {
 	logger     *slog.Logger
 	cmd        atomic.Pointer[exec.Cmd]
 	runCounter atomic.Int32
 }
 
-func (t *Runner) Start(ctx context.Context, cmdline []string) (io.Reader, error) {
+func (t *runner) start(ctx context.Context, cmdline []string) (io.Reader, error) {
 	cmd := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
 	stdout, _ := cmd.StdoutPipe()
 	t.runCounter.Add(1)
@@ -28,7 +28,7 @@ func (t *Runner) Start(ctx context.Context, cmdline []string) (io.Reader, error)
 	return stdout, nil
 }
 
-func (t *Runner) Stop() {
+func (t *runner) stop() {
 	if cmd := t.cmd.Load(); cmd != nil {
 		t.logger.Debug("stopping top command", "count", t.runCounter.Load(), "pid", cmd.Process.Pid)
 		t.cmd.Store(nil)
@@ -37,6 +37,6 @@ func (t *Runner) Stop() {
 	}
 }
 
-func (t *Runner) Running() bool {
+func (t *runner) running() bool {
 	return t.cmd.Load() != nil
 }

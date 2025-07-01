@@ -31,7 +31,7 @@ spec:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "id": 5976,
+      "id": 18,
       "links": [],
       "panels": [
         {
@@ -83,8 +83,7 @@ spec:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -111,10 +110,12 @@ spec:
               "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "single",
               "sort": "none"
             }
           },
+          "pluginVersion": "12.0.2",
           "targets": [
             {
               "datasource": {
@@ -151,7 +152,7 @@ spec:
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
-                "drawStyle": "line",
+                "drawStyle": "bars",
                 "fillOpacity": 0,
                 "gradientMode": "none",
                 "hideFrom": {
@@ -170,7 +171,7 @@ spec:
                 "spanNulls": false,
                 "stacking": {
                   "group": "A",
-                  "mode": "none"
+                  "mode": "normal"
                 },
                 "thresholdsStyle": {
                   "mode": "off"
@@ -181,8 +182,7 @@ spec:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -208,10 +208,12 @@ spec:
               "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "single",
               "sort": "none"
             }
           },
+          "pluginVersion": "12.0.2",
           "targets": [
             {
               "datasource": {
@@ -219,9 +221,9 @@ spec:
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "sum (gpumon_clients_count{node=~\"^$node$\"})",
+              "expr": "sum (gpumon_clients_count{node=~\"^$node$\"}) by (name)",
               "instant": false,
-              "legendFormat": "clients",
+              "legendFormat": "{{name}}",
               "range": true,
               "refId": "A"
             }
@@ -278,8 +280,7 @@ spec:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -306,10 +307,12 @@ spec:
               "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "single",
               "sort": "none"
             }
           },
+          "pluginVersion": "12.0.2",
           "targets": [
             {
               "datasource": {
@@ -328,14 +331,16 @@ spec:
           "type": "timeseries"
         }
       ],
+      "preload": false,
       "refresh": "30s",
-      "schemaVersion": 39,
-      "tags": [],
+      "schemaVersion": 41,
+      "tags": [
+        "grope"
+      ],
       "templating": {
         "list": [
           {
             "current": {
-              "selected": true,
               "text": "nuc1",
               "value": "nuc1"
             },
@@ -344,9 +349,7 @@ spec:
               "uid": "PBFA97CFB590B2093"
             },
             "definition": "label_values(gpumon_engine_usage,node)",
-            "hide": 0,
             "includeAll": true,
-            "multi": false,
             "name": "node",
             "options": [],
             "query": {
@@ -356,8 +359,6 @@ spec:
             },
             "refresh": 1,
             "regex": "",
-            "skipUrlSync": false,
-            "sort": 0,
             "type": "query"
           }
         ]
@@ -370,6 +371,5 @@ spec:
       "timezone": "browser",
       "title": "GPU load",
       "uid": "ae1ri7rqqbbb4a",
-      "version": 4,
-      "weekStart": ""
+      "version": 5
     }

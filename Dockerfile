@@ -14,6 +14,9 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     -o intel-gpu-exporter \
     intel-gpu-exporter.go
 
+# FROM ghcr.io/linuxserver/baseimage-ubuntu:noble
+# RUN apt-get update && apt-get install -y udev intel-gpu-tools
+
 FROM alpine
 
 RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories
