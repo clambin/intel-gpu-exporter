@@ -68,7 +68,7 @@ var (
 	clientMetric = prometheus.NewDesc(
 		prometheus.BuildFQName("gpumon", "clients", "count"),
 		"Number of active clients",
-		nil,
+		[]string{"name"},
 		nil,
 	)
 )
@@ -83,95 +83,97 @@ type Collector struct {
 }
 
 // Describe implements the prometheus.Collector interface.
-func (a *Collector) Describe(ch chan<- *prometheus.Desc) {
+func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- engineMetric
 	ch <- powerMetric
 	ch <- clientMetric
 }
 
 // Collect implements the prometheus.Collector interface.
-func (a *Collector) Collect(ch chan<- prometheus.Metric) {
-	for engine, engineStats := range a.engineStats() {
+func (c *Collector) Collect(ch chan<- prometheus.Metric) {
+	for engine, engineStats := range c.engineStats() {
 		ch <- prometheus.MustNewConstMetric(engineMetric, prometheus.GaugeValue, engineStats.Busy, engine, "busy")
 		ch <- prometheus.MustNewConstMetric(engineMetric, prometheus.GaugeValue, engineStats.Sema, engine, "sema")
 		ch <- prometheus.MustNewConstMetric(engineMetric, prometheus.GaugeValue, engineStats.Wait, engine, "wait")
 	}
-	for module, power := range a.powerStats() {
+	for module, power := range c.powerStats() {
 		ch <- prometheus.MustNewConstMetric(powerMetric, prometheus.GaugeValue, power, module)
 	}
-	ch <- prometheus.MustNewConstMetric(clientMetric, prometheus.GaugeValue, a.clientStats())
-	a.reset()
+	for client, count := range c.clientStats() {
+		ch <- prometheus.MustNewConstMetric(clientMetric, prometheus.GaugeValue, count, client)
+	}
+	c.reset()
 }
 
 // read reads in all GPU stats from an io.Reader and adds them to the Collector.
-func (a *Collector) read(r io.Reader) error {
-	a.logger.Debug("reading from new stream")
-	defer a.logger.Debug("stream closed")
+func (c *Collector) read(r io.Reader) error {
+	c.logger.Debug("reading from new stream")
+	defer c.logger.Debug("stream closed")
 	for stat, err := range igt.ReadGPUStats(r) {
 		if err != nil {
 			return fmt.Errorf("error while reading stats: %w", err)
 		}
-		a.add(stat)
-		a.lastUpdated.Store(time.Now())
-		a.logger.Debug("found stats", "stat", stat)
+		c.add(stat)
+		c.lastUpdated.Store(time.Now())
+		c.logger.Debug("found stats", "stat", stat)
 	}
 	return nil
 }
 
 // lastUpdate returns the timestamp when data was last received. Returns false if no data has been received yet.
-func (a *Collector) lastUpdate() (time.Time, bool) {
-	last := a.lastUpdated.Load()
+func (c *Collector) lastUpdate() (time.Time, bool) {
+	last := c.lastUpdated.Load()
 	if last == nil {
 		return time.Time{}, false
 	}
 	return last.(time.Time), true
 }
 
-func (a *Collector) add(stats igt.GPUStats) {
-	a.lock.Lock()
-	defer a.lock.Unlock()
+func (c *Collector) add(stats igt.GPUStats) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	// TODO: if no one is collecting, this will grow until OOM.  should we clear a certain number of measurements?
-	a.stats = append(a.stats, stats)
+	c.stats = append(c.stats, stats)
 }
 
-func (a *Collector) len() int {
-	a.lock.RLock()
-	defer a.lock.RUnlock()
-	return len(a.stats)
+func (c *Collector) len() int {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return len(c.stats)
 }
 
 // reset clears all received GPU stats.
-func (a *Collector) reset() {
-	a.lock.Lock()
-	defer a.lock.Unlock()
-	if len(a.stats) > 0 {
-		a.stats = a.stats[:0]
+func (c *Collector) reset() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if len(c.stats) > 0 {
+		c.stats = c.stats[:0]
 	}
 }
 
 // powerStats returns the median Power Stats for GPU & Package
-func (a *Collector) powerStats() map[string]float64 {
-	a.lock.RLock()
-	defer a.lock.RUnlock()
+func (c *Collector) powerStats() map[string]float64 {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	return map[string]float64{
-		"gpu": gomathic.MedianFunc(a.stats, func(stats igt.GPUStats) float64 { return stats.Power.GPU }),
-		"pkg": gomathic.MedianFunc(a.stats, func(stats igt.GPUStats) float64 { return stats.Power.Package }),
+		"gpu": gomathic.MedianFunc(c.stats, func(stats igt.GPUStats) float64 { return stats.Power.GPU }),
+		"pkg": gomathic.MedianFunc(c.stats, func(stats igt.GPUStats) float64 { return stats.Power.Package }),
 	}
 }
 
 // engineStats returns the median GPU Stats for each of the GPU's engines.
-func (a *Collector) engineStats() engineStats {
-	a.lock.RLock()
-	defer a.lock.RUnlock()
+func (c *Collector) engineStats() engineStats {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 
 	// group engine stats by engine name
 	const engineCount = 4 // GPUs (typically) have 4 engines
 	statsByEngine := make(map[string][]igt.EngineStats, engineCount)
-	for _, stat := range a.stats {
+	for _, stat := range c.stats {
 		for engineName, engineStat := range stat.Engines {
 			// pre-allocate so slices don't need to grow as we add stats
 			if statsByEngine[engineName] == nil {
-				statsByEngine[engineName] = make([]igt.EngineStats, 0, len(a.stats))
+				statsByEngine[engineName] = make([]igt.EngineStats, 0, len(c.stats))
 			}
 			statsByEngine[engineName] = append(statsByEngine[engineName], engineStat)
 		}
@@ -187,15 +189,28 @@ func (a *Collector) engineStats() engineStats {
 			Unit: stats[0].Unit,
 		}
 	}
-	a.logger.Debug("engine stats collected", "samples", len(a.stats), "engines", engineStats)
+	c.logger.Debug("engine stats collected", "samples", len(c.stats), "engines", engineStats)
 	return engineStats
 }
 
 // clientStats returns the median number of clients using the GPU.
-func (a *Collector) clientStats() float64 {
-	a.lock.RLock()
-	defer a.lock.RUnlock()
-	return gomathic.MedianFunc(a.stats, func(stats igt.GPUStats) float64 { return float64(len(stats.Clients)) })
+func (c *Collector) clientStats() map[string]float64 {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	count := make(map[string][]int)
+	for i, entry := range c.stats {
+		for _, client := range entry.Clients {
+			if _, ok := count[client.Name]; !ok {
+				count[client.Name] = make([]int, len(c.stats))
+			}
+			count[client.Name][i]++
+		}
+	}
+	result := make(map[string]float64, len(count))
+	for clientName, sessions := range count {
+		result[clientName] = float64(gomathic.Median(sessions))
+	}
+	return result
 }
 
 var _ slog.LogValuer = engineStats{}

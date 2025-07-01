@@ -52,7 +52,7 @@ func TestCollector(t *testing.T) {
 		assert.Equal(t, "%", engineStats[engineName].Unit)
 	}
 	assert.Equal(t, map[string]float64{"gpu": 1.0, "pkg": 4.0}, a.powerStats())
-	assert.Equal(t, 1.0, a.clientStats())
+	assert.Equal(t, map[string]float64{"foo": 1.0}, a.clientStats())
 }
 
 func TestCollector_Reset(t *testing.T) {
@@ -85,7 +85,7 @@ func TestCollector_Collect(t *testing.T) {
 	assert.NoError(t, testutil.CollectAndCompare(&a, strings.NewReader(`
 # HELP gpumon_clients_count Number of active clients
 # TYPE gpumon_clients_count gauge
-gpumon_clients_count 1
+gpumon_clients_count{name="foo"} 1
 
 # HELP gpumon_engine_usage Usage statistics for the different GPU engines
 # TYPE gpumon_engine_usage gauge
