@@ -79,6 +79,7 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 
 func (g *gpuMon) aggregate(r io.Reader) {
 	for stat := range igt.ReadGPUStats(r) {
+		g.logger.Debug("collected gpu stat", "stat", stat)
 		g.add(stat)
 		g.lastUpdate = time.Now()
 	}
