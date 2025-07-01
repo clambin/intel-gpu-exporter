@@ -18,8 +18,9 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 # RUN apt-get update && apt-get install -y udev intel-gpu-tools
 
 FROM alpine
-RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories \
-    apk add --no-cache igt-gpu-tools
+
+RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories
+RUN apk add --no-cache igt-gpu-tools
 
 WORKDIR /app
 COPY --from=builder /app/intel-gpu-exporter /app/intel-gpu-exporter
