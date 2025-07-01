@@ -44,7 +44,7 @@ func Test_buildCommand(t *testing.T) {
 
 func TestTopReader_Run(t *testing.T) {
 	l := slog.New(slog.DiscardHandler)
-	r := NewTopReader(Configuration{Interval: 100 * time.Millisecond}, l)
+	r := newTopReader(Configuration{Interval: 100 * time.Millisecond}, l)
 	fake := fakeRunner{interval: 100 * time.Millisecond}
 	r.topRunner = &fake
 	r.timeout = time.Second
@@ -54,18 +54,18 @@ func TestTopReader_Run(t *testing.T) {
 
 	// wait for at least 5 measurements to be made
 	assert.Eventually(t, func() bool {
-		return r.len() >= 5
+		return r.Collector.len() >= 5
 	}, time.Second, 100*time.Millisecond)
 
 	// remember the current number of measurements
-	got := r.len()
+	got := r.Collector.len()
 
 	// stop the current writer
 	fake.stop()
 
 	// wait for reader to time out and start a new writer.
 	assert.Eventually(t, func() bool {
-		return r.len() > got
+		return r.Collector.len() > got
 	}, 2*time.Second, 100*time.Millisecond)
 }
 

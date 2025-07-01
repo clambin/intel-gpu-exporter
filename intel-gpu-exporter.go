@@ -23,15 +23,14 @@ func main() {
 	defer cancel()
 
 	logger := cfg.Logger(os.Stderr, nil)
-	r := collector.NewTopReader(cfg, logger)
 	go func() {
-		if err := collector.Run(ctx, prometheus.DefaultRegisterer, r, logger); err != nil {
-			logger.Error("collector failed to start", "err", err)
-			os.Exit(1)
+		if err := cfg.Serve(ctx); !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("Prometheus server error", "err", err)
 		}
 	}()
 
-	if err := cfg.Serve(ctx); !errors.Is(err, http.ErrServerClosed) {
-		logger.Error("Prometheus server error", "err", err)
+	if err := collector.Run(ctx, prometheus.DefaultRegisterer, cfg, logger); err != nil {
+		logger.Error("collector failed to start", "err", err)
+		os.Exit(1)
 	}
 }

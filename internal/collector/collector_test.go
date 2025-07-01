@@ -18,12 +18,12 @@ func TestRun(t *testing.T) {
 	//l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	l := slog.New(slog.DiscardHandler)
 
-	reader := NewTopReader(Configuration{Interval: 100 * time.Millisecond}, l)
+	reader := newTopReader(Configuration{Interval: 100 * time.Millisecond}, l)
 	reader.topRunner = &fakeRunner{interval: 100 * time.Millisecond}
 	r := prometheus.NewRegistry()
 
 	go func() {
-		assert.NoError(t, Run(t.Context(), r, reader, l))
+		assert.NoError(t, runWithTopReader(t.Context(), r, reader, l))
 	}()
 
 	assert.Eventually(t, func() bool {

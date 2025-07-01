@@ -29,7 +29,11 @@ type Configuration struct {
 	Interval time.Duration `flagger.usage:"Interval to collect statistics"`
 }
 
-func Run(ctx context.Context, r prometheus.Registerer, reader *TopReader, logger *slog.Logger) error {
+func Run(ctx context.Context, r prometheus.Registerer, cfg Configuration, logger *slog.Logger) error {
+	return runWithTopReader(ctx, r, newTopReader(cfg, logger), logger)
+}
+
+func runWithTopReader(ctx context.Context, r prometheus.Registerer, reader *TopReader, logger *slog.Logger) error {
 	logger.Info("intel-gpu-exporter starting", "version", version)
 	defer logger.Info("intel-gpu-exporter shutting down")
 
@@ -124,11 +128,8 @@ func (c *Collector) read(r io.Reader) error {
 
 // lastUpdate returns the timestamp when data was last received. Returns false if no data has been received yet.
 func (c *Collector) lastUpdate() (time.Time, bool) {
-	last := c.lastUpdated.Load()
-	if last == nil {
-		return time.Time{}, false
-	}
-	return last.(time.Time), true
+	last, ok := c.lastUpdated.Load().(time.Time)
+	return last, ok
 }
 
 func (c *Collector) add(stats igt.GPUStats) {
