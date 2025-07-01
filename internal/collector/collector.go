@@ -38,21 +38,7 @@ func runWithTopReader(ctx context.Context, r prometheus.Registerer, reader *TopR
 	defer logger.Info("intel-gpu-exporter shutting down")
 
 	r.MustRegister(&reader.Collector)
-
-	errCh := make(chan error)
-	go func() {
-		errCh <- reader.Run(ctx)
-	}()
-
-	logger.Debug("collector is running")
-	defer logger.Debug("collector is shutting down")
-
-	select {
-	case err := <-errCh:
-		return err
-	case <-ctx.Done():
-		return nil
-	}
+	return reader.Run(ctx)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
