@@ -100,7 +100,7 @@ func (r *TopReader) ensureReaderIsRunning(ctx context.Context) (err error) {
 
 func buildCommand(cfg Configuration) []string {
 	topCommand := []string{
-		"intel_gpu_top",
+		"/usr/bin/intel_gpu_top",
 		"-J",
 		"-s", strconv.FormatInt(cmp.Or(cfg.Interval.Milliseconds(), 1000), 10),
 	}
