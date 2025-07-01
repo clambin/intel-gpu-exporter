@@ -13,6 +13,7 @@ import (
 
 	"codeberg.org/clambin/go-common/flagger"
 	"codeberg.org/clambin/go-common/gomathic"
+	"codeberg.org/clambin/go-common/set"
 	igt "github.com/clambin/intel-gpu-exporter/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -79,6 +80,7 @@ type Collector struct {
 	lastUpdated atomic.Value
 	logger      *slog.Logger
 	stats       []igt.GPUStats
+	clients     set.Set[string]
 	lock        sync.RWMutex
 }
 
@@ -100,7 +102,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(powerMetric, prometheus.GaugeValue, power, module)
 	}
 	for client, count := range c.clientStats() {
-		ch <- prometheus.MustNewConstMetric(clientMetric, prometheus.GaugeValue, count, client)
+		ch <- prometheus.MustNewConstMetric(clientMetric, prometheus.GaugeValue, float64(count), client)
 	}
 	c.reset()
 }
@@ -194,21 +196,30 @@ func (c *Collector) engineStats() engineStats {
 }
 
 // clientStats returns the median number of clients using the GPU.
-func (c *Collector) clientStats() map[string]float64 {
+func (c *Collector) clientStats() map[string]int {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
+	// count the clients in each sample.
+	// we want to report zero for clients that have stopped, otherwise we continue to report the last value to Prometheus.
+	// so we prefill the list with known clients
 	count := make(map[string][]int)
+	for _, clientName := range c.clients.List() {
+		count[clientName] = make([]int, len(c.stats))
+	}
 	for i, entry := range c.stats {
 		for _, client := range entry.Clients {
 			if _, ok := count[client.Name]; !ok {
+				// new client
 				count[client.Name] = make([]int, len(c.stats))
+				c.clients.Add(client.Name)
 			}
 			count[client.Name][i]++
 		}
 	}
-	result := make(map[string]float64, len(count))
+	// tally the results.
+	result := make(map[string]int, len(count))
 	for clientName, sessions := range count {
-		result[clientName] = float64(gomathic.Median(sessions))
+		result[clientName] = gomathic.Median(sessions)
 	}
 	return result
 }

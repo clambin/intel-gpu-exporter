@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"codeberg.org/clambin/go-common/set"
 	igt "github.com/clambin/intel-gpu-exporter/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -37,6 +38,7 @@ func TestCollector(t *testing.T) {
 	r, _ := fake.start(t.Context(), nil)
 	var a Collector
 	a.logger = slog.New(slog.DiscardHandler)
+	a.clients = set.New[string]()
 	go func() { assert.NoError(t, a.read(r)) }()
 
 	// a.read works asynchronously. Wait for all data to be read.
@@ -52,7 +54,7 @@ func TestCollector(t *testing.T) {
 		assert.Equal(t, "%", engineStats[engineName].Unit)
 	}
 	assert.Equal(t, map[string]float64{"gpu": 1.0, "pkg": 4.0}, a.powerStats())
-	assert.Equal(t, map[string]float64{"foo": 1.0}, a.clientStats())
+	assert.Equal(t, map[string]int{"foo": 1}, a.clientStats())
 }
 
 func TestCollector_Reset(t *testing.T) {
@@ -77,6 +79,7 @@ func TestCollector_Collect(t *testing.T) {
 	r, _ := fake.start(t.Context(), nil)
 	var a Collector
 	a.logger = slog.New(slog.DiscardHandler)
+	a.clients = set.New[string]()
 	go func() { assert.NoError(t, a.read(r)) }()
 
 	// wait for the aggregator to read in the data
@@ -109,6 +112,16 @@ gpumon_power{type="pkg"} 4
 `)))
 }
 
+func TestCollector_clientStats(t *testing.T) {
+	c := Collector{clients: set.New[string]()}
+	c.stats = []igt.GPUStats{
+		{Clients: map[string]igt.ClientStats{"_1": {Name: "foo"}}},
+	}
+	assert.Equal(t, map[string]int{"foo": 1}, c.clientStats())
+	c.reset()
+	assert.Equal(t, map[string]int{"foo": 0}, c.clientStats())
+}
+
 func TestEngineStats_LogValue(t *testing.T) {
 	stats := engineStats{
 		"FOO": {},
@@ -123,8 +136,7 @@ func BenchmarkCollector_EngineStats(b *testing.B) {
 	// // BenchmarkAggregator_EngineStats-10    	    7832	    152706 ns/op	  262690 B/op	      19 allocs/op
 	c := Collector{logger: slog.New(slog.DiscardHandler)}
 	var engineNames = []string{"Render/3D", "Blitter", "Video", "VideoEnhance"}
-	const count = 1001
-	for range count {
+	for range 1000 {
 		var stats igt.GPUStats
 		stats.Engines = make(map[string]igt.EngineStats, len(engineNames))
 		for _, engine := range engineNames {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"codeberg.org/clambin/go-common/set"
 	igt "github.com/clambin/intel-gpu-exporter/intel-gpu-top"
 )
 
@@ -36,7 +37,7 @@ type topRunner interface {
 func NewTopReader(cfg Configuration, logger *slog.Logger) *TopReader {
 	r := TopReader{
 		logger:    logger,
-		Collector: Collector{logger: logger.With("subsystem", "aggregator")},
+		Collector: Collector{clients: set.New[string](), logger: logger.With("subsystem", "aggregator")},
 		topRunner: &runner{logger: logger.With("subsystem", "runner")},
 		cfg:       cfg,
 		timeout:   15 * time.Second,
