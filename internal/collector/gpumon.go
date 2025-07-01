@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -92,7 +93,7 @@ func (g *gpuMon) add(stat igt.GPUStats) {
 func (g *gpuMon) stats() []igt.GPUStats {
 	g.lock.RLock()
 	defer g.lock.RUnlock()
-	return g.samples
+	return slices.Clone(g.samples)
 }
 
 func (g *gpuMon) clear() {
@@ -104,7 +105,7 @@ func (g *gpuMon) clear() {
 func (g *gpuMon) collect() []igt.GPUStats {
 	g.lock.RLock()
 	defer g.lock.RUnlock()
-	samples := g.samples
+	samples := slices.Clone(g.samples)
 	g.samples = g.samples[:0]
 	return samples
 }
