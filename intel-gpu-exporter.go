@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,6 +24,11 @@ func main() {
 	defer cancel()
 
 	logger := cfg.Logger(os.Stderr, nil)
+	go func() {
+		if err := http.ListenAndServe(":6060", nil); !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("pprof server error", "err", err)
+		}
+	}()
 	go func() {
 		if err := cfg.Serve(ctx); !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("Prometheus server error", "err", err)

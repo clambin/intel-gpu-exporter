@@ -83,8 +83,8 @@ var (
 type Collector struct {
 	lastUpdated atomic.Value
 	logger      *slog.Logger
-	stats       []igt.GPUStats
 	clients     set.Set[string]
+	stats       []igt.GPUStats
 	lock        sync.RWMutex
 }
 
