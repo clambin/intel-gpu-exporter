@@ -152,3 +152,26 @@ func BenchmarkCollector_EngineStats(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkCollector_clientStats(b *testing.B) {
+	// BenchmarkCollector_clientStats-10    	   99816	     10549 ns/op	    2944 B/op	       5 allocs/op
+	c := Collector{logger: slog.New(slog.DiscardHandler), clients: set.New[string]()}
+	for range 100 {
+		c.add(igt.GPUStats{
+			Clients: map[string]igt.ClientStats{
+				"_1": {Name: "foo"},
+				"_2": {Name: "bar"},
+				"_3": {Name: "baz"},
+				"_4": {Name: "baz"},
+				"_5": {Name: "baz"},
+			},
+		})
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for b.Loop() {
+		if stats := c.clientStats(); len(stats) != 3 {
+			b.Fatalf("expected 3 clients, got %d", len(stats))
+		}
+	}
+}

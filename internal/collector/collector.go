@@ -190,7 +190,7 @@ func (c *Collector) clientStats() map[string]int {
 	// we want to report zero for clients that have stopped, otherwise we continue to report the last value to Prometheus.
 	// so we prefill the list with known clients
 	count := make(map[string][]int)
-	for _, clientName := range c.clients.List() {
+	for clientName := range c.clients {
 		count[clientName] = make([]int, len(c.stats))
 	}
 	for i, entry := range c.stats {
