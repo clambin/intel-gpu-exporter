@@ -113,7 +113,7 @@ gpumon_power{type="pkg"} 4
 }
 
 func TestCollector_clientStats(t *testing.T) {
-	c := Collector{clients: set.New[string]()}
+	c := Collector{clients: set.New[string](), logger: slog.New(slog.DiscardHandler)}
 	c.stats = []igt.GPUStats{
 		{Clients: map[string]igt.ClientStats{"_1": {Name: "foo"}}},
 	}
