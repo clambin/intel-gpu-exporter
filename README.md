@@ -9,11 +9,11 @@ Exports GPU statistics for Intel Quick Sync Video GPUs.
 
 # Metrics
 
-| metric | type |  labels | help                                               |
-| --- | --- |  --- |----------------------------------------------------|
-| gpumon_clients_count | GAUGE | | Number of active clients (currently not supported) |
-| gpumon_engine_usage | GAUGE | attrib, engine| Usage statistics for the different GPU engines     |
-| gpumon_power | GAUGE | type| Power consumption by type                          |
+| metric               | type  | labels         | help                                           |
+|----------------------|-------|----------------|------------------------------------------------|
+| gpumon_clients_count | GAUGE | name           | Number of active clients                       |
+| gpumon_engine_usage  | GAUGE | attrib, engine | Usage statistics for the different GPU engines |
+| gpumon_power         | GAUGE | type           | Power consumption by type                      |
 
 ## Authors
 
