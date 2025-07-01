@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -11,6 +12,34 @@ import (
 	"github.com/clambin/intel-gpu-exporter/intel-gpu-top/testutil"
 	"github.com/stretchr/testify/assert"
 )
+
+func Test_gpuMon_Run(t *testing.T) {
+	fake := fakeRunner{interval: 50 * time.Millisecond}
+	g := gpuMon{
+		topRunner: &fake,
+		timeout:   2 * fake.interval,
+		logger:    slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
+	}
+
+	// start the reader
+	go func() { assert.NoError(t, g.run(t.Context())) }()
+
+	// wait for at least 5 measurements to be made
+	assert.Eventually(t, func() bool {
+		return len(g.stats()) > 4
+	}, time.Second, 100*time.Millisecond)
+
+	// stop the current writer
+	fake.stop()
+
+	// clear the collected samples
+	g.clear()
+
+	// wait for reader to time out and start a new writer.
+	assert.Eventually(t, func() bool {
+		return len(g.stats()) > 0
+	}, time.Second, time.Millisecond)
+}
 
 func Test_buildCommand(t *testing.T) {
 	tests := []struct {
@@ -42,32 +71,7 @@ func Test_buildCommand(t *testing.T) {
 	}
 }
 
-func TestTopReader_Run(t *testing.T) {
-	l := slog.New(slog.DiscardHandler)
-	r := newTopReader(Configuration{Interval: 100 * time.Millisecond}, l)
-	fake := fakeRunner{interval: 100 * time.Millisecond}
-	r.topRunner = &fake
-	r.timeout = time.Second
-
-	// start the reader
-	go func() { assert.NoError(t, r.Run(t.Context())) }()
-
-	// wait for at least 5 measurements to be made
-	assert.Eventually(t, func() bool {
-		return r.Collector.len() >= 5
-	}, time.Second, 100*time.Millisecond)
-
-	// remember the current number of measurements
-	got := r.Collector.len()
-
-	// stop the current writer
-	fake.stop()
-
-	// wait for reader to time out and start a new writer.
-	assert.Eventually(t, func() bool {
-		return r.Collector.len() > got
-	}, 2*time.Second, 100*time.Millisecond)
-}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 var _ topRunner = &fakeRunner{}
 
@@ -76,7 +80,7 @@ type fakeRunner struct {
 	cancel   atomic.Value
 }
 
-func (f *fakeRunner) start(ctx context.Context, _ []string) (io.Reader, error) {
+func (f *fakeRunner) start(ctx context.Context, _ ...string) (io.Reader, error) {
 	subCtx, cancel := context.WithCancel(ctx)
 	f.cancel.Store(cancel)
 	r, w := io.Pipe()
@@ -97,7 +101,7 @@ func (f *fakeRunner) start(ctx context.Context, _ []string) (io.Reader, error) {
 }
 
 func (f *fakeRunner) stop() {
-	if cancel := f.cancel.Load().(context.CancelFunc); cancel != nil {
+	if cancel, ok := f.cancel.Load().(context.CancelFunc); ok && cancel != nil {
 		cancel()
 	}
 }

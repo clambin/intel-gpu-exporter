@@ -2,14 +2,11 @@ package collector
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"log/slog"
 	"maps"
 	"slices"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"codeberg.org/clambin/go-common/flagger"
@@ -31,15 +28,26 @@ type Configuration struct {
 }
 
 func Run(ctx context.Context, r prometheus.Registerer, cfg Configuration, logger *slog.Logger) error {
-	return runWithTopReader(ctx, r, newTopReader(cfg, logger), logger)
+	a := gpuMon{
+		logger:    logger.With("component", "aggregator"),
+		timeout:   cfg.Interval * 5,
+		topRunner: &runner{logger: logger},
+		cfg:       cfg,
+	}
+	return runWithAggregator(ctx, r, &a, logger)
 }
 
-func runWithTopReader(ctx context.Context, r prometheus.Registerer, reader *TopReader, logger *slog.Logger) error {
+func runWithAggregator(ctx context.Context, r prometheus.Registerer, a aggregator, logger *slog.Logger) error {
 	logger.Info("intel-gpu-exporter starting", "version", version)
 	defer logger.Info("intel-gpu-exporter shutting down")
 
-	r.MustRegister(&reader.Collector)
-	return reader.Run(ctx)
+	c := Collector{
+		logger:     logger.With("component", "collector"),
+		clients:    set.New[string](),
+		aggregator: a,
+	}
+	r.MustRegister(&c)
+	return a.run(ctx)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,11 +76,15 @@ var (
 // An Collector collects the GPUStats received from intel_gpu_top and produces a consolidated sample to be reported to Prometheus.
 // Consolidation is done by calculating the median of each attribute.
 type Collector struct {
-	lastUpdated atomic.Value
-	logger      *slog.Logger
-	clients     set.Set[string]
-	stats       []igt.GPUStats
-	lock        sync.RWMutex
+	logger     *slog.Logger
+	clients    set.Set[string]
+	aggregator aggregator
+	lock       sync.RWMutex
+}
+
+type aggregator interface {
+	collect() []igt.GPUStats
+	run(ctx context.Context) error
 }
 
 // Describe implements the prometheus.Collector interface.
@@ -84,86 +96,38 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
-	for engine, engineStats := range c.engineStats() {
+	stats := c.aggregator.collect()
+	for module, power := range c.powerStats(stats) {
+		ch <- prometheus.MustNewConstMetric(powerMetric, prometheus.GaugeValue, power, module)
+	}
+	for engine, engineStats := range c.engineStats(stats) {
 		ch <- prometheus.MustNewConstMetric(engineMetric, prometheus.GaugeValue, engineStats.Busy, engine, "busy")
 		ch <- prometheus.MustNewConstMetric(engineMetric, prometheus.GaugeValue, engineStats.Sema, engine, "sema")
 		ch <- prometheus.MustNewConstMetric(engineMetric, prometheus.GaugeValue, engineStats.Wait, engine, "wait")
 	}
-	for module, power := range c.powerStats() {
-		ch <- prometheus.MustNewConstMetric(powerMetric, prometheus.GaugeValue, power, module)
-	}
-	for client, count := range c.clientStats() {
+	for client, count := range c.clientStats(stats) {
 		ch <- prometheus.MustNewConstMetric(clientMetric, prometheus.GaugeValue, float64(count), client)
-	}
-	c.reset()
-}
-
-// read reads in all GPU stats from an io.Reader and adds them to the Collector.
-func (c *Collector) read(r io.Reader) error {
-	c.logger.Debug("reading from new stream")
-	defer c.logger.Debug("stream closed")
-	for stat, err := range igt.ReadGPUStats(r) {
-		if err != nil {
-			return fmt.Errorf("error while reading stats: %w", err)
-		}
-		c.add(stat)
-		c.lastUpdated.Store(time.Now())
-		c.logger.Debug("found stats", "stat", stat)
-	}
-	return nil
-}
-
-// lastUpdate returns the timestamp when data was last received. Returns false if no data has been received yet.
-func (c *Collector) lastUpdate() (time.Time, bool) {
-	last, ok := c.lastUpdated.Load().(time.Time)
-	return last, ok
-}
-
-func (c *Collector) add(stats igt.GPUStats) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	// TODO: if no one is collecting, this will grow until OOM.  should we clear a certain number of measurements?
-	c.stats = append(c.stats, stats)
-}
-
-func (c *Collector) len() int {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	return len(c.stats)
-}
-
-// reset clears all received GPU stats.
-func (c *Collector) reset() {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if len(c.stats) > 0 {
-		c.stats = c.stats[:0]
 	}
 }
 
 // powerStats returns the median Power Stats for GPU & Package
-func (c *Collector) powerStats() map[string]float64 {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
+func (c *Collector) powerStats(stats []igt.GPUStats) map[string]float64 {
 	return map[string]float64{
-		"gpu": gomathic.MedianFunc(c.stats, func(stats igt.GPUStats) float64 { return stats.Power.GPU }),
-		"pkg": gomathic.MedianFunc(c.stats, func(stats igt.GPUStats) float64 { return stats.Power.Package }),
+		"gpu": gomathic.MedianFunc(stats, func(stats igt.GPUStats) float64 { return stats.Power.GPU }),
+		"pkg": gomathic.MedianFunc(stats, func(stats igt.GPUStats) float64 { return stats.Power.Package }),
 	}
 }
 
 // engineStats returns the median GPU Stats for each of the GPU's engines.
-func (c *Collector) engineStats() engineStats {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-
+func (c *Collector) engineStats(stats []igt.GPUStats) engineStats {
 	// group engine stats by engine name
 	const engineCount = 4 // GPUs (typically) have 4 engines
 	statsByEngine := make(map[string][]igt.EngineStats, engineCount)
-	for _, stat := range c.stats {
+	for _, stat := range stats {
 		for engineName, engineStat := range stat.Engines {
 			// pre-allocate so slices don't need to grow as we add stats
 			if statsByEngine[engineName] == nil {
-				statsByEngine[engineName] = make([]igt.EngineStats, 0, len(c.stats))
+				statsByEngine[engineName] = make([]igt.EngineStats, 0, len(stats))
 			}
 			statsByEngine[engineName] = append(statsByEngine[engineName], engineStat)
 		}
@@ -179,12 +143,12 @@ func (c *Collector) engineStats() engineStats {
 			Unit: stats[0].Unit,
 		}
 	}
-	c.logger.Debug("engine stats collected", "samples", len(c.stats), "engines", engineStats)
+	c.logger.Debug("engine stats collected", "samples", len(stats), "engines", engineStats)
 	return engineStats
 }
 
 // clientStats returns the median number of clients using the GPU.
-func (c *Collector) clientStats() clientStats {
+func (c *Collector) clientStats(stats []igt.GPUStats) clientStats {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	// count the clients in each sample.
@@ -192,13 +156,13 @@ func (c *Collector) clientStats() clientStats {
 	// so we prefill the list with known clients
 	count := make(map[string][]int)
 	for clientName := range c.clients {
-		count[clientName] = make([]int, len(c.stats))
+		count[clientName] = make([]int, len(stats))
 	}
-	for i, entry := range c.stats {
+	for i, entry := range stats {
 		for _, client := range entry.Clients {
 			if _, ok := count[client.Name]; !ok {
 				// new client
-				count[client.Name] = make([]int, len(c.stats))
+				count[client.Name] = make([]int, len(stats))
 				c.clients.Add(client.Name)
 			}
 			count[client.Name][i]++
@@ -209,7 +173,7 @@ func (c *Collector) clientStats() clientStats {
 	for clientName, sessions := range count {
 		result[clientName] = gomathic.Median(sessions)
 	}
-	c.logger.Debug("client stats collected", "samples", len(c.stats), "clients", result)
+	c.logger.Debug("client stats collected", "samples", len(stats), "clients", result)
 	return result
 }
 

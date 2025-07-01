@@ -16,7 +16,7 @@ type runner struct {
 	runCounter atomic.Int32
 }
 
-func (t *runner) start(ctx context.Context, cmdline []string) (io.Reader, error) {
+func (t *runner) start(ctx context.Context, cmdline ...string) (io.Reader, error) {
 	cmd := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
 	stdout, _ := cmd.StdoutPipe()
 	t.runCounter.Add(1)
