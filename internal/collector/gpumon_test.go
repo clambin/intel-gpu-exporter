@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"codeberg.org/clambin/go-common/set"
 	"github.com/clambin/intel-gpu-exporter/intel-gpu-top/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,9 +16,10 @@ import (
 func Test_gpuMon_Run(t *testing.T) {
 	fake := fakeRunner{interval: 50 * time.Millisecond}
 	g := gpuMon{
-		topRunner: &fake,
-		timeout:   5 * fake.interval,
-		logger:    slog.New(slog.DiscardHandler), //slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		topRunner:  &fake,
+		aggregator: &aggregator{clients: set.New[string]()},
+		timeout:    5 * fake.interval,
+		logger:     slog.New(slog.DiscardHandler), //slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	}
 
 	// start the reader
@@ -25,18 +27,18 @@ func Test_gpuMon_Run(t *testing.T) {
 
 	// wait for at least 5 measurements to be made
 	assert.Eventually(t, func() bool {
-		return len(g.stats()) > 4
+		return g.aggregator.len() > 4
 	}, time.Second, 100*time.Millisecond)
 
 	// stop the current writer
 	fake.stop()
 
 	// clear the collected samples
-	g.clear()
+	g.aggregator.flush()
 
 	// wait for reader to time out and start a new writer.
 	assert.Eventually(t, func() bool {
-		return len(g.stats()) > 0
+		return g.aggregator.len() > 0
 	}, time.Second, time.Millisecond)
 }
 

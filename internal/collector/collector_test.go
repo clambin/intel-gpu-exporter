@@ -6,11 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"codeberg.org/clambin/go-common/set"
-	igt "github.com/clambin/intel-gpu-exporter/intel-gpu-top"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,79 +52,4 @@ gpumon_power{type="pkg"} 4
 
 `), "gpumon_clients_count") == nil
 	}, time.Second, time.Millisecond)
-}
-
-func TestCollector_clientStats(t *testing.T) {
-	c := Collector{clients: set.New[string](), logger: slog.New(slog.DiscardHandler)}
-	stats := []igt.GPUStats{
-		{Clients: map[string]igt.ClientStats{"_1": {Name: "foo"}}},
-	}
-	assert.Equal(t, clientStats{"foo": 1}, c.clientStats(stats))
-	assert.Equal(t, clientStats{"foo": 0}, c.clientStats(nil))
-}
-
-func TestEngineStats_LogValue(t *testing.T) {
-	stats := engineStats{
-		"FOO": {},
-		"BAR": {},
-	}
-	assert.Equal(t, "BAR,FOO", stats.LogValue().String())
-	clear(stats)
-	assert.Equal(t, "", stats.LogValue().String())
-}
-
-func TestClientStats_LogValue(t *testing.T) {
-	stats := clientStats{
-		"FOO": 1,
-		"BAR": 2,
-	}
-	assert.Equal(t, "BAR,FOO", stats.LogValue().String())
-	clear(stats)
-	assert.Equal(t, "", stats.LogValue().String())
-}
-
-func BenchmarkCollector_EngineStats(b *testing.B) {
-	// // BenchmarkAggregator_EngineStats-10    	    7832	    152706 ns/op	  262690 B/op	      19 allocs/op
-	c := Collector{logger: slog.New(slog.DiscardHandler)}
-	stats := make([]igt.GPUStats, 1000)
-	var engineNames = []string{"Render/3D", "Blitter", "Video", "VideoEnhance"}
-	for i := range len(stats) {
-		var s igt.GPUStats
-		s.Engines = make(map[string]igt.EngineStats, len(engineNames))
-		for _, engine := range engineNames {
-			s.Engines[engine] = igt.EngineStats{}
-		}
-		stats[i] = s
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for b.Loop() {
-		if stats := c.engineStats(stats); len(stats) != len(engineNames) {
-			b.Fatalf("expected %d engines, got %d", len(engineNames), len(stats))
-		}
-	}
-}
-
-func BenchmarkCollector_clientStats(b *testing.B) {
-	// BenchmarkCollector_clientStats-10    	   99816	     10549 ns/op	    2944 B/op	       5 allocs/op
-	c := Collector{logger: slog.New(slog.DiscardHandler), clients: set.New[string]()}
-	stats := make([]igt.GPUStats, 100)
-	for i := range 100 {
-		stats[i] = igt.GPUStats{
-			Clients: map[string]igt.ClientStats{
-				"_1": {Name: "foo"},
-				"_2": {Name: "bar"},
-				"_3": {Name: "baz"},
-				"_4": {Name: "baz"},
-				"_5": {Name: "baz"},
-			},
-		}
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for b.Loop() {
-		if stats := c.clientStats(stats); len(stats) != 3 {
-			b.Fatalf("expected 3 clients, got %d", len(stats))
-		}
-	}
 }

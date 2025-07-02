@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,9 +15,8 @@ import (
 )
 
 type gpuMon struct {
+	aggregator *aggregator
 	logger     *slog.Logger
-	samples    []igt.GPUStats
-	lastUpdate time.Time
 	timeout    time.Duration
 	topRunner  topRunner
 	cfg        Configuration
@@ -52,14 +50,15 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 	defer g.lock.RUnlock()
 
 	// check we're still receiving updates
-	if timeSince := time.Since(g.lastUpdate); timeSince < g.timeout {
+	timeSince := time.Since(g.aggregator.lastUpdated())
+	if timeSince < g.timeout {
 		return nil
 	}
 
 	// we need (re-)start intel_gpu_top
 	if g.topRunner.running() {
 		// Shut down the current instance of intel_gpu_top
-		g.logger.Warn("timed out waiting for data. restarting intel-gpu-top", "waitTime", time.Since(g.lastUpdate))
+		g.logger.Warn("timed out waiting for data. restarting intel-gpu-top", "waitTime", timeSince)
 		g.topRunner.stop()
 	}
 
@@ -73,38 +72,13 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 
 	// start aggregating from the new instance's output.
 	// any previous goroutines stop as soon as the previous stdout is closed (when we call g.topRunner.stop() above).
-	go g.aggregate(&igt.V118toV117{Source: stdout})
+	go func() {
+		for stat := range igt.ReadGPUStats(&igt.V118toV117{Source: stdout}) {
+			g.logger.Debug("collected gpu stat", "stat", stat)
+			g.aggregator.add(stat)
+		}
+	}()
 	return nil
-}
-
-func (g *gpuMon) aggregate(r io.Reader) {
-	for stat := range igt.ReadGPUStats(r) {
-		g.logger.Debug("collected gpu stat", "stat", stat)
-		g.lock.Lock()
-		g.samples = append(g.samples, stat)
-		g.lastUpdate = time.Now()
-		g.lock.Unlock()
-	}
-}
-
-func (g *gpuMon) stats() []igt.GPUStats {
-	g.lock.RLock()
-	defer g.lock.RUnlock()
-	return slices.Clone(g.samples)
-}
-
-func (g *gpuMon) clear() {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-	g.samples = g.samples[:0]
-}
-
-func (g *gpuMon) collect() []igt.GPUStats {
-	g.lock.RLock()
-	defer g.lock.RUnlock()
-	samples := slices.Clone(g.samples)
-	g.samples = g.samples[:0]
-	return samples
 }
 
 func buildCommand(cfg Configuration) []string {
