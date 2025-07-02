@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-      - sessions
+      - refactor
   workflow_call:
     inputs:
       tags:

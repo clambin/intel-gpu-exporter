@@ -18,7 +18,7 @@ func TestRunner(t *testing.T) {
 
 	// valid command
 	ctx := context.Background()
-	stdout, err := r.start(ctx, []string{"sh", "-c", "echo hello world; sleep 60"})
+	stdout, err := r.start(ctx, "sh", "-c", "echo hello world; sleep 60")
 	require.NoError(t, err)
 	line := make([]byte, 1024)
 	assert.True(t, r.running())
@@ -28,7 +28,7 @@ func TestRunner(t *testing.T) {
 	r.stop()
 
 	// invalid command
-	_, err = r.start(ctx, []string{"not a command"})
+	_, err = r.start(ctx, "not a command")
 	assert.Error(t, err)
 	assert.False(t, r.running())
 }
