@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"log/slog"
 	"strings"
 	"testing"
@@ -16,16 +15,15 @@ import (
 )
 
 func TestCollector_Collect(t *testing.T) {
-	l := slog.New(slog.DiscardHandler)
-	g := gpuMon{
-		logger:    l,
-		timeout:   time.Minute,
-		topRunner: &fakeRunner{interval: time.Millisecond},
-		cfg:       Configuration{},
-	}
 	r := prometheus.NewPedanticRegistry()
 	go func() {
-		require.NoError(t, runWithAggregator(t.Context(), r, &g, l))
+		require.NoError(t, runWithRunner(
+			t.Context(),
+			r,
+			&fakeRunner{interval: time.Millisecond},
+			Configuration{Interval: time.Second},
+			slog.New(slog.DiscardHandler),
+		))
 	}()
 
 	// wait for the aggregator to read in the data
@@ -132,20 +130,4 @@ func BenchmarkCollector_clientStats(b *testing.B) {
 			b.Fatalf("expected 3 clients, got %d", len(stats))
 		}
 	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-var _ aggregator = &fakeAggregator{}
-
-type fakeAggregator struct {
-	stats []igt.GPUStats
-}
-
-func (f fakeAggregator) collect() []igt.GPUStats {
-	return f.stats
-}
-
-func (f fakeAggregator) run(_ context.Context) error {
-	return nil
 }

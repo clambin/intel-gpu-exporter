@@ -28,26 +28,26 @@ type Configuration struct {
 }
 
 func Run(ctx context.Context, r prometheus.Registerer, cfg Configuration, logger *slog.Logger) error {
-	a := gpuMon{
-		logger:    logger.With("component", "aggregator"),
-		timeout:   cfg.Interval * 5,
-		topRunner: &runner{logger: logger},
-		cfg:       cfg,
-	}
-	return runWithAggregator(ctx, r, &a, logger)
+	return runWithRunner(ctx, r, &runner{logger: logger}, cfg, logger)
 }
 
-func runWithAggregator(ctx context.Context, r prometheus.Registerer, a aggregator, logger *slog.Logger) error {
+func runWithRunner(ctx context.Context, r prometheus.Registerer, t topRunner, cfg Configuration, logger *slog.Logger) error {
+	c := Collector{
+		logger:  logger.With("component", "collector"),
+		clients: set.New[string](),
+		aggregator: &gpuMon{
+			logger:    logger.With("component", "aggregator"),
+			timeout:   cfg.Interval * 5,
+			topRunner: t,
+			cfg:       cfg,
+		},
+	}
+	r.MustRegister(&c)
+
 	logger.Info("intel-gpu-exporter starting", "version", version)
 	defer logger.Info("intel-gpu-exporter shutting down")
 
-	c := Collector{
-		logger:     logger.With("component", "collector"),
-		clients:    set.New[string](),
-		aggregator: a,
-	}
-	r.MustRegister(&c)
-	return a.run(ctx)
+	return c.aggregator.run(ctx)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,13 +78,8 @@ var (
 type Collector struct {
 	logger     *slog.Logger
 	clients    set.Set[string]
-	aggregator aggregator
+	aggregator *gpuMon
 	lock       sync.RWMutex
-}
-
-type aggregator interface {
-	collect() []igt.GPUStats
-	run(ctx context.Context) error
 }
 
 // Describe implements the prometheus.Collector interface.

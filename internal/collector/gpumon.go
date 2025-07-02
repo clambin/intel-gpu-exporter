@@ -32,7 +32,7 @@ type topRunner interface {
 }
 
 func (g *gpuMon) run(ctx context.Context) error {
-	aliveTicker := time.NewTicker(5 * g.timeout)
+	aliveTicker := time.NewTicker(g.timeout)
 	defer aliveTicker.Stop()
 
 	for {
@@ -52,7 +52,7 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 	defer g.lock.RUnlock()
 
 	// check we're still receiving updates
-	if timeSince := time.Since(g.lastUpdate); timeSince > 0 && timeSince < g.timeout {
+	if timeSince := time.Since(g.lastUpdate); timeSince < g.timeout {
 		return nil
 	}
 
@@ -80,15 +80,11 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 func (g *gpuMon) aggregate(r io.Reader) {
 	for stat := range igt.ReadGPUStats(r) {
 		g.logger.Debug("collected gpu stat", "stat", stat)
-		g.add(stat)
+		g.lock.Lock()
+		g.samples = append(g.samples, stat)
+		g.lock.Unlock()
 		g.lastUpdate = time.Now()
 	}
-}
-
-func (g *gpuMon) add(stat igt.GPUStats) {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-	g.samples = append(g.samples, stat)
 }
 
 func (g *gpuMon) stats() []igt.GPUStats {
@@ -120,6 +116,5 @@ func buildCommand(cfg Configuration) []string {
 	if cfg.Device != "" {
 		topCommand = append(topCommand, "-d", cfg.Device)
 	}
-
 	return topCommand
 }
