@@ -68,7 +68,7 @@ spec:
                 "scaleDistribution": {
                   "type": "linear"
                 },
-                "showPoints": "auto",
+                "showPoints": "never",
                 "spanNulls": false,
                 "stacking": {
                   "group": "A",
@@ -153,7 +153,7 @@ spec:
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
                 "drawStyle": "bars",
-                "fillOpacity": 0,
+                "fillOpacity": 50,
                 "gradientMode": "none",
                 "hideFrom": {
                   "legend": false,
@@ -167,7 +167,7 @@ spec:
                 "scaleDistribution": {
                   "type": "linear"
                 },
-                "showPoints": "auto",
+                "showPoints": "never",
                 "spanNulls": false,
                 "stacking": {
                   "group": "A",
@@ -265,7 +265,7 @@ spec:
                 "scaleDistribution": {
                   "type": "linear"
                 },
-                "showPoints": "auto",
+                "showPoints": "never",
                 "spanNulls": false,
                 "stacking": {
                   "group": "A",
@@ -341,8 +341,8 @@ spec:
         "list": [
           {
             "current": {
-              "text": "nuc1",
-              "value": "nuc1"
+              "text": "All",
+              "value": "$__all"
             },
             "datasource": {
               "type": "prometheus",
@@ -371,5 +371,5 @@ spec:
       "timezone": "browser",
       "title": "GPU load",
       "uid": "ae1ri7rqqbbb4a",
-      "version": 5
+      "version": 8
     }
