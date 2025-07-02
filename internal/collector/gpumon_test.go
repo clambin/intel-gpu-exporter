@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -18,7 +17,7 @@ func Test_gpuMon_Run(t *testing.T) {
 	g := gpuMon{
 		topRunner: &fake,
 		timeout:   5 * fake.interval,
-		logger:    slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		logger:    slog.New(slog.DiscardHandler), //slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	}
 
 	// start the reader

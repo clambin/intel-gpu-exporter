@@ -82,8 +82,8 @@ func (g *gpuMon) aggregate(r io.Reader) {
 		g.logger.Debug("collected gpu stat", "stat", stat)
 		g.lock.Lock()
 		g.samples = append(g.samples, stat)
-		g.lock.Unlock()
 		g.lastUpdate = time.Now()
+		g.lock.Unlock()
 	}
 }
 
