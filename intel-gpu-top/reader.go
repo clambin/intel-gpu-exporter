@@ -92,7 +92,7 @@ var _ io.Reader = &V118toV117{}
 //   - V1.18 *sometimes* (?) writes commas between the stats.
 //
 // This means json.Decoder will try to read in the full array, where we want to stream the individual records.
-// V118toV117 solves this by removed the array & comma tokens, turning the data back to V1.17 layout.
+// V118toV117 solves this by removing the array and comma tokens, turning the data back to V1.17 layout.
 type V118toV117 struct {
 	Source io.Reader
 	output bytes.Buffer
@@ -119,7 +119,8 @@ func (r *V118toV117) Read(p []byte) (n int, err error) {
 		// run each byte through jsonTracker. when we've collected a complete JSON object,
 		// add it to r.output.
 		for _, char := range buf[:n] {
-			// skip any [, ] or , at root level. This turns the stream into a V117-compliant structure.
+			// skip any "[", "]" and space characters at the root level.
+			// This turns the stream into a V117-compliant structure.
 			if r.atRootLevel() && strings.IndexByte("[],", char) != -1 {
 				continue
 			}

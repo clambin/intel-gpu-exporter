@@ -14,10 +14,10 @@ import (
 )
 
 type aggregator struct {
-	samples    []igt.GPUStats
-	clients    set.Set[string]
-	lock       sync.RWMutex
 	lastUpdate time.Time
+	clients    set.Set[string]
+	samples    []igt.GPUStats
+	lock       sync.RWMutex
 }
 
 func (a *aggregator) add(sample igt.GPUStats) {

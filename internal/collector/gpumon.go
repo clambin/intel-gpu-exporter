@@ -15,11 +15,11 @@ import (
 )
 
 type gpuMon struct {
+	topRunner  topRunner
 	aggregator *aggregator
 	logger     *slog.Logger
-	timeout    time.Duration
-	topRunner  topRunner
 	cfg        Configuration
+	timeout    time.Duration
 	lock       sync.RWMutex
 }
 

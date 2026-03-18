@@ -49,7 +49,6 @@ func TestJsonTracker(t *testing.T) {
 // Now:
 // BenchmarkV118toV117-10    	   28198	     41222 ns/op	    6064 B/op	      10 allocs/op
 func BenchmarkV118toV117(b *testing.B) {
-	// generate input outside the benchmark
 	var payload bytes.Buffer
 	r := testutil.FakeServer(context.Background(), []byte(testutil.SinglePayload), 10, true, true, 0*time.Millisecond)
 	if _, err := payload.ReadFrom(r); err != nil {
