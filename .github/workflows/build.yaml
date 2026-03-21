@@ -3,7 +3,8 @@ on:
   push:
     branches:
       - main
-      - refactor
+      - chore
+      - simplify
   workflow_call:
     inputs:
       tags:
@@ -20,7 +21,7 @@ jobs:
   build:
     needs:
       - test
-    uses: clambin/workflows/.github/workflows/build.yaml@docker
+    uses: clambin/workflows/.github/workflows/build.yaml@main
     with:
       image: ghcr.io/clambin/intel-gpu-exporter
       tags: "${{ inputs.tags || 'type=sha' }}"

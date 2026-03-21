@@ -10,11 +10,14 @@ import (
 )
 
 // runner starts / stops a process and collects its stdout output.
+// gpuMon uses an interface (topRunner) to runner so we can mock intel_gpu_top during testing.
 type runner struct {
 	logger     *slog.Logger
 	cmd        atomic.Pointer[exec.Cmd]
 	runCounter atomic.Int32
 }
+
+var _ topRunner = &runner{}
 
 func (t *runner) start(ctx context.Context, cmdline ...string) (io.Reader, error) {
 	cmd := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)

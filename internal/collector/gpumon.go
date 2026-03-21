@@ -11,15 +11,35 @@ import (
 	"sync"
 	"time"
 
+	"codeberg.org/clambin/go-common/flagger"
 	igt "github.com/clambin/intel-gpu-exporter/intel-gpu-top"
 )
 
+type Configuration struct {
+	flagger.Log
+	flagger.Prom
+	Device   string        `flagger.usage:"Device to collect statistics from (-d parameter of intel_gpu_top)"`
+	Interval time.Duration `flagger.usage:"Interval to collect statistics"`
+}
+
+func (c Configuration) buildCommand() []string {
+	topCommand := []string{
+		"/usr/bin/intel_gpu_top",
+		"-J",
+		"-s", strconv.FormatInt(cmp.Or(c.Interval.Milliseconds(), 1000), 10),
+	}
+	if c.Device != "" {
+		topCommand = append(topCommand, "-d", c.Device)
+	}
+	return topCommand
+}
+
 type gpuMon struct {
+	topRunner  topRunner
 	aggregator *aggregator
 	logger     *slog.Logger
-	timeout    time.Duration
-	topRunner  topRunner
 	cfg        Configuration
+	timeout    time.Duration
 	lock       sync.RWMutex
 }
 
@@ -55,7 +75,7 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 		return nil
 	}
 
-	// we need (re-)start intel_gpu_top
+	// not receiving updates: we need to (re-)start intel_gpu_top
 	if g.topRunner.running() {
 		// Shut down the current instance of intel_gpu_top
 		g.logger.Warn("timed out waiting for data. restarting intel-gpu-top", "waitTime", timeSince)
@@ -63,7 +83,7 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 	}
 
 	// start a new instance of intel_gpu_top
-	cmdline := buildCommand(g.cfg)
+	cmdline := g.cfg.buildCommand()
 	g.logger.Debug("top command built", "cmd", strings.Join(cmdline, " "))
 	stdout, err := g.topRunner.start(ctx, cmdline...)
 	if err != nil {
@@ -73,22 +93,12 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 	// start aggregating from the new instance's output.
 	// any previous goroutines stop as soon as the previous stdout is closed (when we call g.topRunner.stop() above).
 	go func() {
-		for stat := range igt.ReadGPUStats(&igt.V118toV117{Source: stdout}) {
-			g.logger.Debug("collected gpu stat", "stat", stat)
-			g.aggregator.add(stat)
+		for stat, err := range igt.ReadGPUStats(stdout) {
+			g.logger.Debug("collected gpu stat", "stat", stat, "err", err)
+			if err == nil {
+				g.aggregator.add(stat)
+			}
 		}
 	}()
 	return nil
-}
-
-func buildCommand(cfg Configuration) []string {
-	topCommand := []string{
-		"/usr/bin/intel_gpu_top",
-		"-J",
-		"-s", strconv.FormatInt(cmp.Or(cfg.Interval.Milliseconds(), 1000), 10),
-	}
-	if cfg.Device != "" {
-		topCommand = append(topCommand, "-d", cfg.Device)
-	}
-	return topCommand
 }

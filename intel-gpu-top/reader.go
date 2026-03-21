@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
-	"strings"
+	"strconv"
 )
 
 // GPUStats contains GPU utilization, as presented by intel-gpu-top
@@ -57,17 +57,45 @@ type ClientStats struct {
 		Busy string `json:"busy"`
 		Unit string `json:"unit"`
 	} `json:"engine-classes"`
-	Name string `json:"name"`
-	Pid  string `json:"pid"`
+	Memory map[string]map[string]MemoryBytes `json:"memory"`
+	Name   string                            `json:"name"`
+	Pid    string                            `json:"pid"`
+}
+
+type MemoryBytes uint64
+
+func (m *MemoryBytes) UnmarshalJSON(b []byte) error {
+	var u uint64
+	b = bytes.Trim(b, "\"")
+	if err := json.Unmarshal(b, &u); err != nil {
+		return err
+	}
+	*m = MemoryBytes(u)
+	return nil
+}
+
+func (m MemoryBytes) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + strconv.FormatUint(uint64(m), 10) + `"`), nil
 }
 
 // ReadGPUStats decodes the output of "intel-gpu-top -J" and iterates through the GPUStats records.
 //
-// Works with intel-gpu-top v1.17.  If you want to use v1.18 (which uses a different layout), see [V118toV117].
-// This middleware converts the output back to v1.17 layout, so it can be processed by ReadGPUStats
+// JSON output of "intel-gpu-top -J" is a bit funky": it's a stream of JSON objects (that may or may not
+// have separating comma between the objects), but also contains an outer array. For example:
+//
+//	[
+//	  { ... }
+//	  { ... }
+//	  ...
+//	]
+//
+// The stdlib JSON library rejects this. This function addresses this by stripping the outer array
+// and removing the separating comma's, so that we can treat the output as a stream of JSON objects.
+//
+// Works with intel-gpu-top v2.3.
 func ReadGPUStats(r io.Reader) iter.Seq2[GPUStats, error] {
 	return func(yield func(GPUStats, error) bool) {
-		dec := json.NewDecoder(r)
+		dec := json.NewDecoder(&jsonFormatter{Source: r})
 		var err error
 		for dec.More() {
 			var stats GPUStats
@@ -79,99 +107,90 @@ func ReadGPUStats(r io.Reader) iter.Seq2[GPUStats, error] {
 			}
 		}
 		if err != nil && !errors.Is(err, io.EOF) {
-			yield(GPUStats{}, fmt.Errorf("GetGPUStats: %w", err))
+			yield(GPUStats{}, fmt.Errorf("json: %w", err))
 		}
 	}
 }
 
-var _ io.Reader = &V118toV117{}
-
-// V118toV117 converts the input from v1.18 of intel_gpu_top to v1.17 syntax. Specifically:
-//
-//   - V1.18 generates the stats as a json array ("[" and "]").
-//   - V1.18 *sometimes* (?) writes commas between the stats.
-//
-// This means json.Decoder will try to read in the full array, where we want to stream the individual records.
-// V118toV117 solves this by removed the array & comma tokens, turning the data back to V1.17 layout.
-type V118toV117 struct {
-	Source io.Reader
-	output bytes.Buffer
-	jsonTracker
-	buffer [512]byte // json reads in 512 blocks
+// jsonFormatter is a io.Reader that strips the outer array and removes the separating commas
+// from intel_gpu_top's JSON output.
+type jsonFormatter struct {
+	Source     io.Reader
+	out        bytes.Buffer
+	depth      int
+	buf        [512]byte // allocate here to reduce allocations in Read()
+	seenStart  bool
+	inString   bool
+	escapeNext bool
 }
 
-// Read reads from the source and extracts complete JSON objects.
-func (r *V118toV117) Read(p []byte) (n int, err error) {
-	if r.output.Len() > 0 {
-		return r.output.Read(p)
+func (j *jsonFormatter) Read(p []byte) (int, error) {
+	// Serve buffered output first
+	if j.out.Len() > 0 {
+		return j.out.Read(p)
 	}
 
-	// don't allocate a buffer on every read
-	buf := r.buffer[:]
-	for r.output.Len() == 0 {
-		clear(buf)
-		if n, err = r.Source.Read(buf); err == io.EOF {
-			break
+	for {
+		// read more data
+		n, err := j.Source.Read(j.buf[:])
+		if n > 0 {
+			j.process(j.buf[:n])
 		}
+
+		// Serve processes output
+		if j.out.Len() > 0 {
+			return j.out.Read(p)
+		}
+
+		// if we hit an error (which may be EOF), return it
 		if err != nil {
 			return 0, err
 		}
-		// run each byte through jsonTracker. when we've collected a complete JSON object,
-		// add it to r.output.
-		for _, char := range buf[:n] {
-			// skip any [, ] or , at root level. This turns the stream into a V117-compliant structure.
-			if r.atRootLevel() && strings.IndexByte("[],", char) != -1 {
+	}
+}
+
+func (j *jsonFormatter) process(p []byte) {
+	for _, b := range p {
+		// Handle strings and escape sequences
+		if j.inString {
+			j.out.WriteByte(b)
+
+			if j.escapeNext {
+				j.escapeNext = false
+			} else if b == '\\' {
+				j.escapeNext = true
+			} else if b == '"' {
+				j.inString = false
+			}
+			continue
+		}
+
+		// check for array start/end, JSON objects and strings
+		switch b {
+		case '"':
+			j.inString = true
+		case '{', '[':
+			// start of an array or object: strip it only if it's the root array
+			if b == '[' && !j.seenStart && j.depth == 0 {
+				j.seenStart = true
+				j.depth++
 				continue
 			}
-			r.process(char)
-
-			// If a complete JSON object is detected, add it to r.output.
-			// r.output.WriteTo empties jsonTracker's buffer.
-			if obj, ok := r.hasCompleteObject(); ok {
-				_, _ = obj.WriteTo(&r.output)
+			j.depth++
+		case '}', ']':
+			// end of an array or object: strip it only if it's the root array
+			if j.depth > 0 {
+				j.depth--
+			}
+			if b == ']' && j.seenStart && j.depth == 0 {
+				continue
+			}
+		case ',':
+			// skip commas at level 1 (i.e., the level inside the root array)
+			if j.depth == 1 {
+				continue
 			}
 		}
+		j.out.WriteByte(b)
 	}
-	return r.output.Read(p)
-}
-
-// jsonTracker is a helper for V118toV117 that reads in json data and works out when we've received a complete json object.
-type jsonTracker struct {
-	buffer       bytes.Buffer
-	nestingLevel int
-	inString     bool
-	escapeNext   bool
-}
-
-func (r *jsonTracker) process(char byte) {
-	r.buffer.WriteByte(char)
-	if r.inString {
-		if r.escapeNext {
-			r.escapeNext = false
-		} else if char == '\\' {
-			r.escapeNext = true
-		} else if char == '"' {
-			r.inString = false
-		}
-	} else {
-		switch char {
-		case '{':
-			r.nestingLevel++
-		case '}':
-			r.nestingLevel--
-		case '"':
-			r.inString = true
-		}
-	}
-}
-
-func (r *jsonTracker) atRootLevel() bool {
-	return r.nestingLevel == 0 && !r.inString
-}
-
-func (r *jsonTracker) hasCompleteObject() (*bytes.Buffer, bool) {
-	if r.atRootLevel() && r.buffer.Len() > 0 {
-		return &r.buffer, true
-	}
-	return nil, false
 }

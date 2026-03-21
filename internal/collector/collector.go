@@ -3,9 +3,7 @@ package collector
 import (
 	"context"
 	"log/slog"
-	"time"
 
-	"codeberg.org/clambin/go-common/flagger"
 	"codeberg.org/clambin/go-common/set"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -14,34 +12,26 @@ var (
 	version = "change-me"
 )
 
-type Configuration struct {
-	flagger.Log
-	flagger.Prom
-	Device   string        `flagger.usage:"Device to collect statistics from (-d parameter of intel_gpu_top)"`
-	Interval time.Duration `flagger.usage:"Interval to collect statistics"`
-}
-
 func Run(ctx context.Context, r prometheus.Registerer, cfg Configuration, logger *slog.Logger) error {
 	return runWithRunner(ctx, r, &runner{logger: logger}, cfg, logger)
 }
 
 func runWithRunner(ctx context.Context, r prometheus.Registerer, t topRunner, cfg Configuration, logger *slog.Logger) error {
-	a := aggregator{clients: set.New[string]()}
-	c := Collector{
-		logger:     logger.With("component", "collector"),
-		aggregator: &a,
-	}
-	r.MustRegister(&c)
-
 	logger.Info("intel-gpu-exporter starting", "version", version)
 	defer logger.Info("intel-gpu-exporter shutting down")
 
+	c := Collector{
+		aggregator: &aggregator{clients: set.New[string]()},
+		logger:     logger.With("component", "collector"),
+	}
+	r.MustRegister(&c)
+
 	m := gpuMon{
-		logger:     logger.With("component", "aggregator"),
-		aggregator: &a,
+		aggregator: c.aggregator,
 		timeout:    cfg.Interval * 5,
 		topRunner:  t,
 		cfg:        cfg,
+		logger:     logger.With("component", "aggregator"),
 	}
 
 	return m.run(ctx)
@@ -70,7 +60,7 @@ var (
 	)
 )
 
-// An Collector collects the GPUStats received from intel_gpu_top and produces a consolidated sample to be reported to Prometheus.
+// A Collector collects the GPUStats received from intel_gpu_top and produces a consolidated sample to be reported to Prometheus.
 // Consolidation is done by calculating the median of each attribute.
 type Collector struct {
 	logger     *slog.Logger
