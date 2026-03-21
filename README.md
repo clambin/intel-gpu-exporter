@@ -7,6 +7,10 @@
 
 Exports GPU statistics for Intel Quick Sync Video GPUs.
 
+# Dependencies
+
+- [intel_gpu_top](https://gitlab.freedesktop.org/drm/igt-gpu-tools) v2.3 or higher.
+
 # Metrics
 
 | metric               | type  | labels         | help                                           |
