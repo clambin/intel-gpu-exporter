@@ -1,39 +1,5 @@
 package testutil
 
-import (
-	"context"
-	"io"
-	"time"
-)
-
-func FakeServer(ctx context.Context, payload []byte, count int, array bool, commas bool, delay time.Duration) io.Reader {
-	r, w := io.Pipe()
-
-	go func() {
-		defer func() { _ = w.Close() }()
-		if array {
-			_, _ = w.Write([]byte("[\n"))
-		}
-		for i := range count {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(delay):
-				if i != 0 && commas {
-					_, _ = w.Write([]byte(","))
-				}
-				_, _ = w.Write([]byte("\n"))
-				_, _ = w.Write(payload)
-			}
-		}
-		if array {
-			_, _ = w.Write([]byte("\n]\n"))
-		}
-	}()
-
-	return r
-}
-
 const SinglePayload = `{
 	"period": {
 		"duration": 1048.677745,
@@ -92,6 +58,15 @@ const SinglePayload = `{
 		"4293539623": {
 			"name": "foo",
 			"pid": "1427673",
+			"memory": {
+				"system": {
+					"total": "274145280",
+					"shared": "0",
+					"resident": "147709952",
+					"purgeable": "675840",
+					"active": "36433920"
+				}
+			},
 			"engine-classes": {
 				"Render/3D": {
 					"busy": "0.000000",

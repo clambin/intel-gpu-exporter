@@ -12,9 +12,7 @@ import (
 )
 
 func TestRunner(t *testing.T) {
-	//l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	l := slog.New(slog.DiscardHandler)
-	r := runner{logger: l}
+	r := runner{logger: slog.New(slog.DiscardHandler)}
 
 	// valid command
 	ctx := context.Background()

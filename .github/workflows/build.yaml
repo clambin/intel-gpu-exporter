@@ -4,6 +4,7 @@ on:
     branches:
       - main
       - chore
+      - simplify
   workflow_call:
     inputs:
       tags:

@@ -119,10 +119,7 @@ var _ slog.LogValuer = engineStats{}
 type engineStats map[string]igt.EngineStats
 
 func (e engineStats) LogValue() slog.Value {
-	engineNames := make([]string, 0, len(e))
-	for engineName := range e {
-		engineNames = append(engineNames, engineName)
-	}
+	engineNames := slices.Collect(maps.Keys(e))
 	slices.Sort(engineNames)
 	return slog.StringValue(strings.Join(engineNames, ","))
 }

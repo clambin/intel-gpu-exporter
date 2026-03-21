@@ -13,7 +13,37 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_gpuMon_Run(t *testing.T) {
+func TestConfiguration_buildCommand(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  Configuration
+		want []string
+	}{
+		{
+			name: "defaults",
+			cfg:  Configuration{},
+			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "1000"},
+		},
+		{
+			name: "with device",
+			cfg:  Configuration{Device: "/dev/sda"},
+			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "1000", "-d", "/dev/sda"},
+		},
+		{
+			name: "with interval",
+			cfg:  Configuration{Interval: 5 * time.Second},
+			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "5000"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.cfg.buildCommand())
+		})
+	}
+}
+
+func TestGpuMon_run(t *testing.T) {
 	fake := fakeRunner{interval: 50 * time.Millisecond}
 	g := gpuMon{
 		topRunner:  &fake,
@@ -42,38 +72,6 @@ func Test_gpuMon_Run(t *testing.T) {
 	}, time.Second, time.Millisecond)
 }
 
-func Test_buildCommand(t *testing.T) {
-	tests := []struct {
-		name string
-		cfg  Configuration
-		want []string
-	}{
-		{
-			name: "defaults",
-			cfg:  Configuration{},
-			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "1000"},
-		},
-		{
-			name: "with device",
-			cfg:  Configuration{Device: "/dev/sda"},
-			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "1000", "-d", "/dev/sda"},
-		},
-		{
-			name: "with interval",
-			cfg:  Configuration{Interval: 5 * time.Second},
-			want: []string{"/usr/bin/intel_gpu_top", "-J", "-s", "5000"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, buildCommand(tt.cfg))
-		})
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 var _ topRunner = &fakeRunner{}
 
 type fakeRunner struct {
@@ -87,16 +85,7 @@ func (f *fakeRunner) start(ctx context.Context, _ ...string) (io.Reader, error) 
 	r, w := io.Pipe()
 	go func() {
 		defer func() { _ = r.Close() }()
-		for {
-			select {
-			case <-subCtx.Done():
-				return
-			case <-time.After(f.interval):
-				if _, err := w.Write([]byte(testutil.SinglePayload)); err != nil {
-					panic(err)
-				}
-			}
-		}
+		f.sendPayloads(subCtx, w)
 	}()
 	return r, nil
 }
@@ -109,4 +98,26 @@ func (f *fakeRunner) stop() {
 
 func (f *fakeRunner) running() bool {
 	return f.cancel.Load() != nil
+}
+
+func (f *fakeRunner) sendPayloads(ctx context.Context, w io.Writer) {
+	_, _ = w.Write([]byte("["))
+	defer func() { _, _ = w.Write([]byte("]\n")) }()
+	first := true
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(f.interval):
+			payload := testutil.SinglePayload
+			if !first {
+				payload = "," + payload
+			}
+			first = false
+
+			if _, err := w.Write([]byte(payload)); err != nil {
+				panic(err)
+			}
+		}
+	}
 }
