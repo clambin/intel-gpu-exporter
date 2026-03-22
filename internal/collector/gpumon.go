@@ -20,6 +20,7 @@ type Configuration struct {
 	flagger.Prom
 	Device   string        `flagger.usage:"Device to collect statistics from (-d parameter of intel_gpu_top)"`
 	Interval time.Duration `flagger.usage:"Interval to collect statistics"`
+	Pprof    bool          `flagger.usage:"Enable pprof"`
 }
 
 func (c Configuration) buildCommand() []string {
