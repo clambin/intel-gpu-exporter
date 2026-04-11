@@ -54,11 +54,18 @@ gpumon_engine_usage{attrib="wait",engine="VideoEnhance"} 0
 gpumon_power{type="gpu"} 1
 gpumon_power{type="pkg"} 4
 
-# HELP gpumon_frequency GPU frequency statistics
+# HELP gpumon_frequency GPU frequency statistics, in MHz
 # TYPE gpumon_frequency gauge
 gpumon_frequency{type="actual"} 184.0
 gpumon_frequency{type="requested"} 185.0
 
+# HELP gpumon_imc_read IMC read operations, in MiB/s
+# TYPE gpumon_imc_read gauge
+gpumon_imc_read 503.442586
+
+# HELP gpumon_imc_write IMC write operations, in MiB/s
+# TYPE gpumon_imc_write gauge
+gpumon_imc_write 51.315726
 `)) == nil
 	}, time.Second, time.Millisecond)
 }

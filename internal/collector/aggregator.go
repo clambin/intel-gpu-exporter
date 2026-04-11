@@ -134,6 +134,30 @@ func freqToMHz(freq float64, unit string) float64 {
 	return freq
 }
 
+func (a *aggregator) bandwidthStats() (float64, float64) {
+	return gomathic.MedianFunc(a.samples, func(stats igt.GPUStats) float64 {
+			return bandwidthToMBPS(stats.ImcBandwidth.Reads, stats.ImcBandwidth.Unit)
+		}),
+		gomathic.MedianFunc(a.samples, func(stats igt.GPUStats) float64 {
+			return bandwidthToMBPS(stats.ImcBandwidth.Writes, stats.ImcBandwidth.Unit)
+		})
+}
+
+var bandwidthConversion = map[string]float64{
+	"b/s":   0.000001,
+	"kib/s": 0.001,
+	"mib/s": 1,
+	"gib/s": 1_000,
+}
+
+func bandwidthToMBPS(bandwidth float64, unit string) float64 {
+	factor, ok := bandwidthConversion[strings.ToLower(unit)]
+	if ok {
+		bandwidth *= factor
+	}
+	return bandwidth
+}
+
 var _ slog.LogValuer = engineStats{}
 
 type engineStats map[string]igt.EngineStats

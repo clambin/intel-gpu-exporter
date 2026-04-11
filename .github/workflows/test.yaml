@@ -4,7 +4,7 @@ on:
   push:
     branches-ignore:
       - main
-      - freq
+      - imc
   workflow_call:
 permissions:
   contents: read

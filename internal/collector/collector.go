@@ -61,8 +61,22 @@ var (
 
 	freqMetric = prometheus.NewDesc(
 		prometheus.BuildFQName("gpumon", "", "frequency"),
-		"GPU frequency statistics",
+		"GPU frequency statistics, in MHz",
 		[]string{"type"},
+		nil,
+	)
+
+	imcReadMetric = prometheus.NewDesc(
+		prometheus.BuildFQName("gpumon", "imc", "read"),
+		"IMC read operations, in MiB/s",
+		nil,
+		nil,
+	)
+
+	imcWriteMetric = prometheus.NewDesc(
+		prometheus.BuildFQName("gpumon", "imc", "write"),
+		"IMC write operations, in MiB/s",
+		nil,
 		nil,
 	)
 )
@@ -80,6 +94,8 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- powerMetric
 	ch <- clientMetric
 	ch <- freqMetric
+	ch <- imcReadMetric
+	ch <- imcWriteMetric
 }
 
 // Collect implements the prometheus.Collector interface.
@@ -99,6 +115,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	requestedFreq, actualFreq := c.aggregator.freqStats()
 	ch <- prometheus.MustNewConstMetric(freqMetric, prometheus.GaugeValue, requestedFreq, "requested")
 	ch <- prometheus.MustNewConstMetric(freqMetric, prometheus.GaugeValue, actualFreq, "actual")
+
+	imcRead, imcWrite := c.aggregator.bandwidthStats()
+	ch <- prometheus.MustNewConstMetric(imcReadMetric, prometheus.GaugeValue, imcRead)
+	ch <- prometheus.MustNewConstMetric(imcWriteMetric, prometheus.GaugeValue, imcWrite)
 
 	c.aggregator.flush()
 }
