@@ -58,6 +58,13 @@ var (
 		[]string{"name"},
 		nil,
 	)
+
+	freqMetric = prometheus.NewDesc(
+		prometheus.BuildFQName("gpumon", "", "frequency"),
+		"GPU frequency statistics",
+		[]string{"type"},
+		nil,
+	)
 )
 
 // A Collector collects the GPUStats received from intel_gpu_top and produces a consolidated sample to be reported to Prometheus.
@@ -72,6 +79,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- engineMetric
 	ch <- powerMetric
 	ch <- clientMetric
+	ch <- freqMetric
 }
 
 // Collect implements the prometheus.Collector interface.
@@ -87,5 +95,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	for client, count := range c.aggregator.clientStats() {
 		ch <- prometheus.MustNewConstMetric(clientMetric, prometheus.GaugeValue, float64(count), client)
 	}
+
+	requestedFreq, actualFreq := c.aggregator.freqStats()
+	ch <- prometheus.MustNewConstMetric(freqMetric, prometheus.GaugeValue, requestedFreq, "requested")
+	ch <- prometheus.MustNewConstMetric(freqMetric, prometheus.GaugeValue, actualFreq, "actual")
+
 	c.aggregator.flush()
 }

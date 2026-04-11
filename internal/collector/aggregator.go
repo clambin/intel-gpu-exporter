@@ -114,6 +114,26 @@ func (a *aggregator) clientStats() clientStats {
 	return result
 }
 
+func (a *aggregator) freqStats() (float64, float64) {
+	return gomathic.MedianFunc(a.samples, func(stats igt.GPUStats) float64 { return freqToMHz(stats.Frequency.Requested, stats.Frequency.Unit) }),
+		gomathic.MedianFunc(a.samples, func(stats igt.GPUStats) float64 { return freqToMHz(stats.Frequency.Actual, stats.Frequency.Unit) })
+}
+
+var freqConversion = map[string]float64{
+	"hz":  0.000001,
+	"khz": 0.001,
+	"mhz": 1,
+	"ghz": 1_000,
+}
+
+func freqToMHz(freq float64, unit string) float64 {
+	factor, ok := freqConversion[strings.ToLower(unit)]
+	if ok {
+		freq *= factor
+	}
+	return freq
+}
+
 var _ slog.LogValuer = engineStats{}
 
 type engineStats map[string]igt.EngineStats

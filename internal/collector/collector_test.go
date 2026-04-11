@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,8 +24,11 @@ func TestCollector_Collect(t *testing.T) {
 		))
 	}()
 
+	//time.Sleep(time.Second)
+	//t.Log(testutil.CollectAndCompare(r, strings.NewReader("")))
+
 	// wait for the aggregator to read in the data
-	require.Eventually(t, func() bool {
+	assert.Eventually(t, func() bool {
 		return testutil.CollectAndCompare(r, strings.NewReader(`
 # HELP gpumon_clients_count Number of active clients
 # TYPE gpumon_clients_count gauge
@@ -50,6 +54,11 @@ gpumon_engine_usage{attrib="wait",engine="VideoEnhance"} 0
 gpumon_power{type="gpu"} 1
 gpumon_power{type="pkg"} 4
 
-`), "gpumon_clients_count") == nil
+# HELP gpumon_frequency GPU frequency statistics
+# TYPE gpumon_frequency gauge
+gpumon_frequency{type="actual"} 184.0
+gpumon_frequency{type="requested"} 185.0
+
+`)) == nil
 	}, time.Second, time.Millisecond)
 }

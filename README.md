@@ -17,6 +17,7 @@ Exports GPU statistics for Intel Quick Sync Video GPUs.
 |----------------------|-------|----------------|------------------------------------------------|
 | gpumon_clients_count | GAUGE | name           | Number of active clients                       |
 | gpumon_engine_usage  | GAUGE | attrib, engine | Usage statistics for the different GPU engines |
+| gpumon_frequency     | GAUGE | type           | GPU frequency (requested/actual)               |
 | gpumon_power         | GAUGE | type           | Power consumption by type                      |
 
 ## Authors

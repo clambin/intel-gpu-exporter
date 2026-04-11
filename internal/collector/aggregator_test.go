@@ -40,9 +40,9 @@ func TestClientStats_LogValue(t *testing.T) {
 	assert.Equal(t, "", stats.LogValue().String())
 }
 
-// Now:
-// BenchmarkAggregator_EngineStats-10    	    8847	    133112 ns/op	  262675 B/op	      18 allocs/op
 func BenchmarkAggregator_EngineStats(b *testing.B) {
+	// Now:
+	// BenchmarkAggregator_EngineStats-10    	    9040	    131210 ns/op	  262674 B/op	      18 allocs/op
 	a := aggregator{clients: set.New[string]()}
 	var engineNames = []string{"Render/3D", "Blitter", "Video", "VideoEnhance"}
 	for range 1000 {
@@ -62,10 +62,8 @@ func BenchmarkAggregator_EngineStats(b *testing.B) {
 	}
 }
 
-// Now:
-// BenchmarkAggregator_clientStats-10    	  108298	      9610 ns/op	    2944 B/op	       5 allocs/op
 func BenchmarkAggregator_clientStats(b *testing.B) {
-	// BenchmarkAggregator_clientStats-10    	  107694	     10454 ns/op	    2944 B/op	       5 allocs/op
+	// BenchmarkAggregator_clientStats-10    	  109485	      9454 ns/op	    2944 B/op	       5 allocs/op
 	a := aggregator{clients: set.New[string]()}
 	for range 100 {
 		a.add(igt.GPUStats{

@@ -4,8 +4,7 @@ on:
   push:
     branches-ignore:
       - main
-      - chore
-      - simplify
+      - freq
   workflow_call:
 permissions:
   contents: read

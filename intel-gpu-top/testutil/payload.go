@@ -6,8 +6,8 @@ const SinglePayload = `{
 		"unit": "ms"
 	},
 	"frequency": {
-		"requested": 0.000000,
-		"actual": 0.000000,
+		"requested": 185.0,
+		"actual": 184.0,
 		"unit": "MHz"
 	},
 	"interrupts": {

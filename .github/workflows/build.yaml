@@ -3,8 +3,7 @@ on:
   push:
     branches:
       - main
-      - chore
-      - simplify
+      - freq
   workflow_call:
     inputs:
       tags:
