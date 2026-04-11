@@ -75,6 +75,11 @@ You may be better served by running a Deployment with a node selector for your h
 | gpumon_imc_write     | GAUGE |                | IMC write operations, in MiB/s                 |
 | gpumon_power         | GAUGE | type           | Power consumption by type                      |
 
+# Dashboard
+
+See [dashboards.yaml](assets/dashboard/dashboards.yaml) for a Grafana dashboard visualizing these metrics.
+This dashboard is exported as a [grafana-operator](https://github.com/grafana/grafana-operator) dashboard.
+
 ## Authors
 
 * **Christophe Lambin**
