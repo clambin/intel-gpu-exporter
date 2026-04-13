@@ -108,8 +108,13 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(engineMetric, prometheus.GaugeValue, engineStats.Sema, engine, "sema")
 		ch <- prometheus.MustNewConstMetric(engineMetric, prometheus.GaugeValue, engineStats.Wait, engine, "wait")
 	}
-	for client, count := range c.aggregator.clientStats() {
+
+	clientStats := c.aggregator.clientStats()
+	for client, count := range clientStats {
 		ch <- prometheus.MustNewConstMetric(clientMetric, prometheus.GaugeValue, float64(count), client)
+	}
+	if len(clientStats) == 0 {
+		ch <- prometheus.MustNewConstMetric(clientMetric, prometheus.GaugeValue, 0, "")
 	}
 
 	requestedFreq, actualFreq := c.aggregator.freqStats()
