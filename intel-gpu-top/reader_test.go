@@ -51,6 +51,7 @@ func TestJSONFormatter(t *testing.T) {
 		{"missing trailing ]", `[{"foo":"bar"},{"foo":"bar"}`, `{"foo":"bar"}{"foo":"bar"}`},
 		{"ignore inner array", `[{"key":["foo","bar"]}}]`, `{"key":["foo","bar"]}}`},
 		{"nested", `[{"foo":{"bar":0,"baz":1}}]`, `{"foo":{"bar":0,"baz":1}}`},
+		{"escape characters", `[{"foo":"bar\\n"}]`, `{"foo":"bar\\n"}`},
 	}
 
 	for _, tt := range tests {
