@@ -47,7 +47,7 @@ func TestGpuMon_run(t *testing.T) {
 	fake := fakeRunner{interval: 50 * time.Millisecond}
 	g := gpuMon{
 		topRunner:  &fake,
-		aggregator: &aggregator{clients: set.New[string]()},
+		aggregator: &aggregator{clientNames: set.New[string]()},
 		timeout:    5 * fake.interval,
 		logger:     slog.New(slog.DiscardHandler), //slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	}

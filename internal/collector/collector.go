@@ -21,7 +21,7 @@ func runWithRunner(ctx context.Context, r prometheus.Registerer, t topRunner, cf
 	defer logger.Info("intel-gpu-exporter shutting down")
 
 	c := Collector{
-		aggregator: &aggregator{clients: set.New[string]()},
+		aggregator: &aggregator{clientNames: set.New[string]()},
 		logger:     logger.With("component", "collector"),
 	}
 	r.MustRegister(&c)
@@ -112,9 +112,6 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	clientStats := c.aggregator.clientStats()
 	for client, count := range clientStats {
 		ch <- prometheus.MustNewConstMetric(clientMetric, prometheus.GaugeValue, float64(count), client)
-	}
-	if len(clientStats) == 0 {
-		ch <- prometheus.MustNewConstMetric(clientMetric, prometheus.GaugeValue, 0, "")
 	}
 
 	requestedFreq, actualFreq := c.aggregator.freqStats()

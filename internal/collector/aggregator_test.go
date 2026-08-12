@@ -9,12 +9,10 @@ import (
 )
 
 func TestAggregator_clientStats(t *testing.T) {
-	a := aggregator{
-		clients: set.New[string](),
-		samples: []igt.GPUStats{
-			{Clients: map[string]igt.ClientStats{"_1": {Name: "foo"}}},
-		},
-	}
+	a := aggregator{clientNames: set.New[string]()}
+	a.add(igt.GPUStats{
+		Clients: map[string]igt.ClientStats{"_1": {Name: "foo"}},
+	})
 	assert.Equal(t, clientStats{"foo": 1}, a.clientStats())
 	a.flush()
 	assert.Equal(t, clientStats{"foo": 0}, a.clientStats())
@@ -41,9 +39,8 @@ func TestClientStats_LogValue(t *testing.T) {
 }
 
 func BenchmarkAggregator_EngineStats(b *testing.B) {
-	// Now:
 	// BenchmarkAggregator_EngineStats-10    	    9040	    131210 ns/op	  262674 B/op	      18 allocs/op
-	a := aggregator{clients: set.New[string]()}
+	a := aggregator{clientNames: set.New[string]()}
 	var engineNames = []string{"Render/3D", "Blitter", "Video", "VideoEnhance"}
 	for range 1000 {
 		var s igt.GPUStats
@@ -53,7 +50,6 @@ func BenchmarkAggregator_EngineStats(b *testing.B) {
 		}
 		a.add(s)
 	}
-	b.ResetTimer()
 	b.ReportAllocs()
 	for b.Loop() {
 		if stats := a.engineStats(); len(stats) != len(engineNames) {
@@ -63,8 +59,8 @@ func BenchmarkAggregator_EngineStats(b *testing.B) {
 }
 
 func BenchmarkAggregator_clientStats(b *testing.B) {
-	// BenchmarkAggregator_clientStats-10    	  109485	      9454 ns/op	    2944 B/op	       5 allocs/op
-	a := aggregator{clients: set.New[string]()}
+	// BenchmarkAggregator_clientStats-10    	  171494	      6991 ns/op	    2944 B/op	       5 allocs/op
+	a := aggregator{clientNames: set.New[string]()}
 	for range 100 {
 		a.add(igt.GPUStats{
 			Clients: map[string]igt.ClientStats{
@@ -76,7 +72,6 @@ func BenchmarkAggregator_clientStats(b *testing.B) {
 			},
 		})
 	}
-	b.ResetTimer()
 	b.ReportAllocs()
 	for b.Loop() {
 		if stats := a.clientStats(); len(stats) != 3 {

@@ -14,16 +14,19 @@ import (
 )
 
 type aggregator struct {
-	lastUpdate time.Time
-	clients    set.Set[string]
-	samples    []igt.GPUStats
-	lock       sync.RWMutex
+	lastUpdate  time.Time
+	clientNames set.Set[string]
+	samples     []igt.GPUStats
+	lock        sync.RWMutex
 }
 
 func (a *aggregator) add(sample igt.GPUStats) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	a.samples = append(a.samples, sample)
+	for _, clientStat := range sample.Clients {
+		a.clientNames.Add(clientStat.Name)
+	}
 	a.lastUpdate = time.Now()
 }
 
@@ -63,16 +66,16 @@ func (a *aggregator) engineStats() engineStats {
 	}
 
 	// for each engine, aggregate its stats
-	engineStats := make(engineStats, len(statsByEngine))
+	reportedEngineStats := make(engineStats, len(statsByEngine))
 	for engine, stats := range statsByEngine {
-		engineStats[engine] = igt.EngineStats{
+		reportedEngineStats[engine] = igt.EngineStats{
 			Busy: gomathic.MedianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Busy }),
 			Sema: gomathic.MedianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Sema }),
 			Wait: gomathic.MedianFunc(stats, func(stats igt.EngineStats) float64 { return stats.Wait }),
 			Unit: stats[0].Unit,
 		}
 	}
-	return engineStats
+	return reportedEngineStats
 }
 
 // powerStats returns the median Power Stats for GPU & Package
@@ -85,24 +88,21 @@ func (a *aggregator) powerStats() map[string]float64 {
 	}
 }
 
-// clientStats returns the median number of clients using the GPU.
+// clientStats returns the median number of clientNames using the GPU.
 func (a *aggregator) clientStats() clientStats {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
+
 	// count the clients in each sample.
 	// we want to report zero for clients that have stopped, otherwise we continue to report the last value to Prometheus.
 	// so we prefill the list with known clients
 	count := make(map[string][]int)
-	for clientName := range a.clients {
+	for clientName := range a.clientNames {
 		count[clientName] = make([]int, len(a.samples))
 	}
+	// add the report client names for each sample
 	for i, entry := range a.samples {
 		for _, client := range entry.Clients {
-			if _, ok := count[client.Name]; !ok {
-				// new client
-				count[client.Name] = make([]int, len(a.samples))
-				a.clients.Add(client.Name)
-			}
 			count[client.Name][i]++
 		}
 	}
