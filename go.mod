@@ -1,6 +1,6 @@
 module github.com/clambin/intel-gpu-exporter
 
-go 1.26
+go 1.27
 
 require (
 	codeberg.org/clambin/go-common/flagger v0.3.0

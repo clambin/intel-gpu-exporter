@@ -56,7 +56,7 @@ func TestJSONFormatter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			buf, err := io.ReadAll(&jsonFormatter{Source: strings.NewReader(tt.input)})
+			buf, err := io.ReadAll(&jsonStreamer{Source: strings.NewReader(tt.input)})
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, string(buf))
 		})
@@ -80,7 +80,7 @@ func BenchmarkJSONFormatter(b *testing.B) {
 	b.ResetTimer()
 	var buf [512]byte
 	for b.Loop() {
-		r := &jsonFormatter{Source: strings.NewReader(payload.String())}
+		r := &jsonStreamer{Source: strings.NewReader(payload.String())}
 
 		var err error
 		for !errors.Is(err, io.EOF) {
@@ -125,9 +125,11 @@ func TestReadGpuStats_Invalid(t *testing.T) {
 	assert.Equal(t, 1, returnedStats)
 }
 
-// Now:
-// BenchmarkReadGpuStats-10    	    2622	    397378 ns/op	  126529 B/op	    2134 allocs/op
 func BenchmarkReadGpuStats(b *testing.B) {
+	// Previous:
+	// BenchmarkReadGpuStats-10    	    2622	    397378 ns/op	  126529 B/op	    2134 allocs/op
+	// Now (Go 1.27):
+	// BenchmarkReadGpuStats-10    	    3876	    306278 ns/op	   93538 B/op	     912 allocs/op
 	var payload strings.Builder
 	payload.WriteString("[")
 	for i := range 32 {
@@ -138,8 +140,8 @@ func BenchmarkReadGpuStats(b *testing.B) {
 	}
 	payload.WriteString("]")
 
-	b.ReportAllocs()
 	b.ResetTimer()
+	b.ReportAllocs()
 	for b.Loop() {
 		var count int
 		for _, err := range ReadGPUStats(strings.NewReader(payload.String())) {

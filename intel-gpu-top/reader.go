@@ -80,8 +80,8 @@ func (m MemoryBytes) MarshalJSON() ([]byte, error) {
 
 // ReadGPUStats decodes the output of "intel-gpu-top -J" and iterates through the GPUStats records.
 //
-// JSON output of "intel-gpu-top -J" is a bit funky": it's a stream of JSON objects (that may or may not
-// have separating comma between the objects), but also contains an outer array. For example:
+// JSON output of "intel-gpu-top -J" is a bit funky: it's a stream of JSON objects (that may or may not
+// have separating comma between the objects), but also contains an outer array. For example,
 //
 //	[
 //	  { ... }
@@ -95,7 +95,7 @@ func (m MemoryBytes) MarshalJSON() ([]byte, error) {
 // Works with intel-gpu-top v2.3.
 func ReadGPUStats(r io.Reader) iter.Seq2[GPUStats, error] {
 	return func(yield func(GPUStats, error) bool) {
-		dec := json.NewDecoder(&jsonFormatter{Source: r})
+		dec := json.NewDecoder(&jsonStreamer{Source: r})
 		var err error
 		for dec.More() {
 			var stats GPUStats
@@ -112,9 +112,9 @@ func ReadGPUStats(r io.Reader) iter.Seq2[GPUStats, error] {
 	}
 }
 
-// jsonFormatter is a io.Reader that strips the outer array and removes the separating commas
-// from intel_gpu_top's JSON output.
-type jsonFormatter struct {
+// jsonStreamer takes intel-gpu-top's JSON output, strips the outer array, and removes the separating commas.
+// This allows a client to stream the output as it is produced.
+type jsonStreamer struct {
 	Source     io.Reader
 	out        bytes.Buffer
 	depth      int
@@ -124,7 +124,7 @@ type jsonFormatter struct {
 	escapeNext bool
 }
 
-func (j *jsonFormatter) Read(p []byte) (int, error) {
+func (j *jsonStreamer) Read(p []byte) (int, error) {
 	// Serve buffered output first
 	if j.out.Len() > 0 {
 		return j.out.Read(p)
@@ -137,7 +137,7 @@ func (j *jsonFormatter) Read(p []byte) (int, error) {
 			j.process(j.buf[:n])
 		}
 
-		// Serve processes output
+		// Serve processed output
 		if j.out.Len() > 0 {
 			return j.out.Read(p)
 		}
@@ -149,7 +149,7 @@ func (j *jsonFormatter) Read(p []byte) (int, error) {
 	}
 }
 
-func (j *jsonFormatter) process(p []byte) {
+func (j *jsonStreamer) process(p []byte) {
 	for _, b := range p {
 		// Handle strings and escape sequences
 		if j.inString {
