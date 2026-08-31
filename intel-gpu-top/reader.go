@@ -5,10 +5,10 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
-	"fmt"
 	"io"
 	"iter"
 	"strconv"
+	"sync/atomic"
 )
 
 // GPUStats contains GPU utilization, as presented by intel-gpu-top
@@ -79,7 +79,7 @@ func (m MemoryBytes) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + strconv.FormatUint(uint64(m), 10) + `"`), nil
 }
 
-// ReadGPUStats decodes the output of "intel-gpu-top -J" and iterates through the GPUStats records.
+// A Reader decodes the output of "intel-gpu-top -J" and iterates through the GPUStats records.
 //
 // JSON output of "intel-gpu-top -J" is a bit funky: it's a stream of JSON objects (that may or may not
 // have separating comma between the objects), but also contains an outer array. For example,
@@ -94,24 +94,38 @@ func (m MemoryBytes) MarshalJSON() ([]byte, error) {
 // and removing the separating comma's, so that we can treat the output as a stream of JSON objects.
 //
 // Works with intel-gpu-top v2.3.
-func ReadGPUStats(r io.Reader) iter.Seq2[GPUStats, error] {
-	return func(yield func(GPUStats, error) bool) {
-		dec := jsontext.NewDecoder(&jsonStreamer{Source: r})
+type Reader struct {
+	err atomic.Pointer[error]
+}
+
+// Seq returns an iterator that decodes reader, the output of "intel-gpu-top -J" and
+// iterates through the GPUStats records.
+func (r *Reader) Seq(reader io.Reader) iter.Seq[GPUStats] {
+	return func(yield func(GPUStats) bool) {
+		r.err.Store(nil)
+		dec := jsontext.NewDecoder(&jsonStreamer{Source: reader})
+		var err error
 		for {
 			var stats GPUStats
-			err := json.UnmarshalDecode(dec, &stats)
-			if errors.Is(err, io.EOF) {
-				return
+			if err = json.UnmarshalDecode(dec, &stats); err != nil {
+				break
 			}
-			if err != nil {
-				yield(GPUStats{}, fmt.Errorf("json: %w", err))
-				return
-			}
-			if !yield(stats, nil) {
+			if !yield(stats) {
 				return
 			}
 		}
+		if err != nil && !errors.Is(err, io.EOF) {
+			r.err.Store(&err)
+		}
 	}
+}
+
+// Err returns the error encountered while decoding the output of "intel-gpu-top -J".
+func (r *Reader) Err() error {
+	if err := r.err.Load(); err != nil {
+		return *err
+	}
+	return nil
 }
 
 // jsonStreamer takes intel-gpu-top's JSON output, strips the outer array, and removes the separating commas.

@@ -104,11 +104,12 @@ func TestReadGpuStats(t *testing.T) {
 	buf.WriteString("]")
 
 	var collectedStats []GPUStats
-	for stats, err := range ReadGPUStats(&buf) {
-		require.NoError(t, err)
+	var r Reader
+	for stats := range r.Seq(&buf) {
 		assert.Equal(t, gpuStats, stats)
 		collectedStats = append(collectedStats, stats)
 	}
+	require.NoError(t, r.Err())
 	assert.Len(t, collectedStats, recordCount)
 	for _, stat := range collectedStats {
 		assert.Equal(t, gpuStats, stat)
@@ -117,21 +118,19 @@ func TestReadGpuStats(t *testing.T) {
 
 func TestReadGpuStats_Invalid(t *testing.T) {
 	var returnedStats int
-	for stats, err := range ReadGPUStats(strings.NewReader("invalid json")) {
-		assert.Error(t, err)
-		assert.Zero(t, stats)
+	var r Reader
+	for range r.Seq(strings.NewReader("invalid json")) {
 		returnedStats++
 	}
-	assert.Equal(t, 1, returnedStats)
+	assert.Error(t, r.Err())
+	assert.Zero(t, returnedStats)
 }
 
 func BenchmarkReadGpuStats(b *testing.B) {
-	// Previous:
-	// BenchmarkReadGpuStats-10    	    2622	    397378 ns/op	  126529 B/op	    2134 allocs/op
-	// Go 1.27 (json v1):
-	// BenchmarkReadGpuStats-10    	    3876	    306278 ns/op	   93538 B/op	     912 allocs/op
-	// Current (json v2):
+	// Previous (json v2):
 	// BenchmarkReadGpuStats-10    	    4891	    242361 ns/op	   99745 B/op	     944 allocs/op
+	// Current (iterator):
+	// BenchmarkReadGpuStats-10    	    4723	    243633 ns/op	   99762 B/op	     945 allocs/op
 	var payload strings.Builder
 	payload.WriteString("[")
 	for i := range 32 {
@@ -142,14 +141,13 @@ func BenchmarkReadGpuStats(b *testing.B) {
 	}
 	payload.WriteString("]")
 
+	var r Reader
+
 	b.ResetTimer()
 	b.ReportAllocs()
 	for b.Loop() {
 		var count int
-		for _, err := range ReadGPUStats(strings.NewReader(payload.String())) {
-			if err != nil {
-				b.Fatal(err)
-			}
+		for range r.Seq(strings.NewReader(payload.String())) {
 			count++
 		}
 		if count != 32 {
