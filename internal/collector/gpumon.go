@@ -42,6 +42,7 @@ type gpuMon struct {
 	cfg        Configuration
 	timeout    time.Duration
 	lastUpdate atomic.Pointer[time.Time]
+	first      atomic.Bool
 	reader     igt.Reader
 }
 
@@ -75,7 +76,10 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 	}
 
 	// not receiving updates: we need to (re-)start intel_gpu_top
-	g.logger.Warn("(re)starting intel-gpu-top")
+	if !g.first.Load() {
+		g.logger.Warn("restarting intel-gpu-top")
+		g.first.Store(true)
+	}
 
 	if g.topRunner.running() {
 		// shut down the current instance of intel_gpu_top
