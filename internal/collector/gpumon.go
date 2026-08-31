@@ -40,7 +40,6 @@ type gpuMon struct {
 	aggregator *aggregator
 	logger     *slog.Logger
 	lastUpdate atomic.Pointer[time.Time]
-	reader     igt.Reader
 	cfg        Configuration
 	timeout    time.Duration
 	isRestart  atomic.Bool
@@ -76,9 +75,10 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 	}
 
 	// not receiving updates: we need to (re-)start intel_gpu_top
-	if g.isRestart.Load() {
+
+	// do not log first time
+	if g.isRestart.Swap(true) {
 		g.logger.Warn("restarting intel-gpu-top")
-		g.isRestart.Store(true)
 	}
 
 	if g.topRunner.running() {
@@ -97,12 +97,13 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 	// start aggregating from the new instance's output.
 	// any previous goroutines stop as soon as the previous stdout is closed (when we call g.topRunner.stop() above).
 	go func() {
-		for stat := range g.reader.Seq(stdout) {
+		var reader igt.Reader
+		for stat := range reader.Seq(stdout) {
 			g.logger.Debug("collected gpu stat", "stat", stat)
 			g.aggregator.add(stat)
 			g.lastUpdate.Store(new(time.Now()))
 		}
-		if err := g.reader.Err(); err != nil {
+		if err := reader.Err(); err != nil {
 			g.logger.Warn("error reading intel-gpu-top output", "err", err)
 		}
 	}()
