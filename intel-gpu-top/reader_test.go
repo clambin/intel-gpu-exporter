@@ -63,9 +63,9 @@ func TestJSONFormatter(t *testing.T) {
 	}
 }
 
-// Now:
-// BenchmarkJSONFormatter-10    	   14036	     84990 ns/op	    1632 B/op	       6 allocs/op
-func BenchmarkJSONFormatter(b *testing.B) {
+func BenchmarkJSONStreamer(b *testing.B) {
+	// Now:
+	// BenchmarkJSONStreamer-10    	   13417	     88751 ns/op	    1632 B/op	       6 allocs/op
 	var payload strings.Builder
 	payload.WriteString("[")
 	for i := range 32 {
@@ -128,8 +128,10 @@ func TestReadGpuStats_Invalid(t *testing.T) {
 func BenchmarkReadGpuStats(b *testing.B) {
 	// Previous:
 	// BenchmarkReadGpuStats-10    	    2622	    397378 ns/op	  126529 B/op	    2134 allocs/op
-	// Now (Go 1.27):
+	// Go 1.27 (json v1):
 	// BenchmarkReadGpuStats-10    	    3876	    306278 ns/op	   93538 B/op	     912 allocs/op
+	// Current (json v2):
+	// BenchmarkReadGpuStats-10    	    4891	    242361 ns/op	   99745 B/op	     944 allocs/op
 	var payload strings.Builder
 	payload.WriteString("[")
 	for i := range 32 {

@@ -2,7 +2,8 @@ package intel_gpu_top
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -95,19 +96,20 @@ func (m MemoryBytes) MarshalJSON() ([]byte, error) {
 // Works with intel-gpu-top v2.3.
 func ReadGPUStats(r io.Reader) iter.Seq2[GPUStats, error] {
 	return func(yield func(GPUStats, error) bool) {
-		dec := json.NewDecoder(&jsonStreamer{Source: r})
-		var err error
-		for dec.More() {
+		dec := jsontext.NewDecoder(&jsonStreamer{Source: r})
+		for {
 			var stats GPUStats
-			if err = dec.Decode(&stats); err != nil {
-				break
+			err := json.UnmarshalDecode(dec, &stats)
+			if errors.Is(err, io.EOF) {
+				return
+			}
+			if err != nil {
+				yield(GPUStats{}, fmt.Errorf("json: %w", err))
+				return
 			}
 			if !yield(stats, nil) {
 				return
 			}
-		}
-		if err != nil && !errors.Is(err, io.EOF) {
-			yield(GPUStats{}, fmt.Errorf("json: %w", err))
 		}
 	}
 }
