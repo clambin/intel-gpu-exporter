@@ -39,11 +39,11 @@ type gpuMon struct {
 	topRunner  topRunner
 	aggregator *aggregator
 	logger     *slog.Logger
+	lastUpdate atomic.Pointer[time.Time]
+	reader     igt.Reader
 	cfg        Configuration
 	timeout    time.Duration
-	lastUpdate atomic.Pointer[time.Time]
-	first      atomic.Bool
-	reader     igt.Reader
+	isRestart  atomic.Bool
 }
 
 type topRunner interface {
@@ -76,9 +76,9 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 	}
 
 	// not receiving updates: we need to (re-)start intel_gpu_top
-	if !g.first.Load() {
+	if g.isRestart.Load() {
 		g.logger.Warn("restarting intel-gpu-top")
-		g.first.Store(true)
+		g.isRestart.Store(true)
 	}
 
 	if g.topRunner.running() {
