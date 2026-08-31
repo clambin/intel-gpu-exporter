@@ -107,5 +107,6 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 			g.logger.Warn("error reading intel-gpu-top output", "err", err)
 		}
 	}()
+
 	return nil
 }
