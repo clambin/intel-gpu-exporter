@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
 	"codeberg.org/clambin/go-common/gomathic"
 	"codeberg.org/clambin/go-common/set"
@@ -14,7 +13,6 @@ import (
 )
 
 type aggregator struct {
-	lastUpdate  time.Time
 	clientNames set.Set[string]
 	samples     []igt.GPUStats
 	lock        sync.RWMutex
@@ -27,19 +25,12 @@ func (a *aggregator) add(sample igt.GPUStats) {
 	for _, clientStat := range sample.Clients {
 		a.clientNames.Add(clientStat.Name)
 	}
-	a.lastUpdate = time.Now()
 }
 
 func (a *aggregator) len() int {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
 	return len(a.samples)
-}
-
-func (a *aggregator) lastUpdated() time.Time {
-	a.lock.RLock()
-	defer a.lock.RUnlock()
-	return a.lastUpdate
 }
 
 func (a *aggregator) flush() {

@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"codeberg.org/clambin/go-common/flagger"
@@ -39,9 +39,10 @@ type gpuMon struct {
 	topRunner  topRunner
 	aggregator *aggregator
 	logger     *slog.Logger
+	lastUpdate atomic.Pointer[time.Time]
 	cfg        Configuration
 	timeout    time.Duration
-	lock       sync.RWMutex
+	isRestart  atomic.Bool
 }
 
 type topRunner interface {
@@ -67,19 +68,21 @@ func (g *gpuMon) run(ctx context.Context) error {
 }
 
 func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
-	g.lock.RLock()
-	defer g.lock.RUnlock()
-
 	// check we're still receiving updates
-	timeSince := time.Since(g.aggregator.lastUpdated())
-	if timeSince < g.timeout {
+	lastUpdate := g.lastUpdate.Load()
+	if lastUpdate != nil && time.Since(*lastUpdate) < g.timeout {
 		return nil
 	}
 
 	// not receiving updates: we need to (re-)start intel_gpu_top
+
+	// do not log first time
+	if g.isRestart.Swap(true) {
+		g.logger.Warn("restarting intel-gpu-top")
+	}
+
 	if g.topRunner.running() {
-		// Shut down the current instance of intel_gpu_top
-		g.logger.Warn("timed out waiting for data. restarting intel-gpu-top", "waitTime", timeSince)
+		// shut down the current instance of intel_gpu_top
 		g.topRunner.stop()
 	}
 
@@ -94,12 +97,16 @@ func (g *gpuMon) ensureIsRunning(ctx context.Context) error {
 	// start aggregating from the new instance's output.
 	// any previous goroutines stop as soon as the previous stdout is closed (when we call g.topRunner.stop() above).
 	go func() {
-		for stat, err := range igt.ReadGPUStats(stdout) {
-			g.logger.Debug("collected gpu stat", "stat", stat, "err", err)
-			if err == nil {
-				g.aggregator.add(stat)
-			}
+		var reader igt.Reader
+		for stat := range reader.Seq(stdout) {
+			g.logger.Debug("collected gpu stat", "stat", stat)
+			g.aggregator.add(stat)
+			g.lastUpdate.Store(new(time.Now()))
+		}
+		if err := reader.Err(); err != nil {
+			g.logger.Warn("error reading intel-gpu-top output", "err", err)
 		}
 	}()
+
 	return nil
 }
