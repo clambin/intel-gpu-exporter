@@ -69,7 +69,7 @@ You may be better served by running a Deployment with a node selector for your h
 |----------------------|-------|----------------|------------------------------------------------|
 | gpumon_clients_count | GAUGE | name           | Number of active clients                       |
 | gpumon_engine_usage  | GAUGE | attrib, engine | Usage statistics for the different GPU engines |
-| gpumon_frequency     | GAUGE | type           | GPU frequency (requested/actual) in MHz/s      |
+| gpumon_frequency     | GAUGE | type           | GPU frequency (requested/actual) in MHz        |
 | gpumon_imc_read      | GAUGE |                | IMC read operations, in MiB/s                  |               
 | gpumon_imc_write     | GAUGE |                | IMC write operations, in MiB/s                 |
 | gpumon_power         | GAUGE | type           | Power consumption by type                      |
